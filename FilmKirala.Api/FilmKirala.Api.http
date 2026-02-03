@@ -1,0 +1,6 @@
+@FilmKirala.Api_HostAddress = http://localhost:5269
+
+GET {{FilmKirala.Api_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
