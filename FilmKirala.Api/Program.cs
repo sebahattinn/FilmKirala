@@ -8,9 +8,6 @@ using Serilog;
 using FilmKirala.Infrastructure.Persistence;
 using Microsoft.OpenApi.Models;
 
-
-
-
 var builder = WebApplication.CreateBuilder(args);
 
 var configuration = builder.Configuration;
