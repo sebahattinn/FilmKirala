@@ -7,7 +7,7 @@ using FilmKirala.Domain.Enums;
 
 namespace FilmKirala.Domain.Entity
 {
-    public class Movies
+    public class Movie
     {
         public int Id { get; private set; }
         public string Title { get; private set; }
@@ -24,7 +24,7 @@ namespace FilmKirala.Domain.Entity
         private readonly List<RentalPricing> _rentalPricings = new();
         
         public IReadOnlyCollection<RentalPricing> RentalPricings => _rentalPricings;
-        public Movies(string title,string description, string genre, int stock, bool isActive) {
+        public Movie(string title,string description, string genre, int stock, bool isActive) {
 
 
             if (stock<0)

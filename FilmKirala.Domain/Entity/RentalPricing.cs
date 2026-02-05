@@ -16,11 +16,10 @@ namespace FilmKirala.Domain.Entity
         public int Price { get; private set; }
 
 
-        public Movies Movie { get; private set; }
-
+        public Movie Movie { get; private set; }
 
         private RentalPricing() { }
-        public RentalPricing(DurationType durationType, int durationValue, int price, Movies movie)
+        public RentalPricing(DurationType durationType, int durationValue, int price, Movie movie)
         {
 
             if (price<0)

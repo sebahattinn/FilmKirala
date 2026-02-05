@@ -8,7 +8,7 @@ using FilmKirala.Domain.Enums;
 
 namespace FilmKirala.Domain.Entity
 {
-    public class Users
+    public class User                          // Add-Migration InitialCreate               Update-Database
     {
         public int Id { get; private set; }
         public string Username { get; private set; }
@@ -20,7 +20,7 @@ namespace FilmKirala.Domain.Entity
         public DateTime CreatedAt { get; private set; }
         public Roles Roles { get; private set; }
 
-        public Users(string username, string email, string passwordHash, string passwordSalt, int walletBalance,Roles roles )
+        public User(string username, string email, string passwordHash, string passwordSalt, int walletBalance,Roles roles )
         {
             Username = username;
             Email = email;
