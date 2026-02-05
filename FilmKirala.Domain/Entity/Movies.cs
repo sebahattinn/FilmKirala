@@ -20,7 +20,7 @@ namespace FilmKirala.Domain.Entity
      
 
 
-
+       // private Movies() { }
         private readonly List<RentalPricing> _rentalPricings = new();
         
         public IReadOnlyCollection<RentalPricing> RentalPricings => _rentalPricings;

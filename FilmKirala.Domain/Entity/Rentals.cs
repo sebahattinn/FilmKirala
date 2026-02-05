@@ -18,9 +18,9 @@ namespace FilmKirala.Domain.Entity
         public int TotalPrice { get; private set; }
         public bool Status { get; private set; } //kiralandı mı kiralanmadı mı zart zurt cart curt
 
-        public Users User { get; private set; }
-        public Movies Movie { get; private set; }
-        public RentalPricing RentalPricing { get; private set; }
+        public Users? User { get; private set; }
+        public Movies? Movie { get; private set; }
+        public RentalPricing? RentalPricing { get; private set; }
 
 
         public void RentalsCreate( DateTime startRentalDate, DateTime endRentalDate, int totalPrice, bool status, Users users,Movies movies, RentalPricing rentalPricing)
