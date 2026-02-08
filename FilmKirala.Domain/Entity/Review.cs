@@ -6,8 +6,6 @@ namespace FilmKirala.Domain.Entity
     public class Review
     {
         public int Id { get; private set; }
-
-        // --- ID'leri geri getirdik (En sağlam yöntem) ---
         public int UserId { get; private set; }
         public int MovieId { get; private set; }
 
@@ -15,19 +13,15 @@ namespace FilmKirala.Domain.Entity
         public User? User { get; private set; }
         public Movie? Movie { get; private set; }
 
-        // Bu opsiyonel, null olabilir
-        public int? RentalPricingId { get; private set; }
-        public RentalPricing? RentalPricing { get; private set; }
+        // 🗑️ SİLİNDİ: RentalPricingId ve RentalPricing (Gereksizdi)
 
         public Rating Rating { get; private set; }
         public string Comment { get; private set; }
         public DateTime CreatedAt { get; private set; }
 
-        // EF Core'un veritabanından okurken kullandığı boş constructor
-        // BU ÇOK ÖNEMLİ, SİLME!
+        // EF Core için boş constructor
         private Review() { }
 
-        // Yeni kayıt atarken kullanacağın constructor
         public Review(int userId, int movieId, string comment, Rating rating)
         {
             if (userId <= 0) throw new ArgumentException("Geçersiz User Id");

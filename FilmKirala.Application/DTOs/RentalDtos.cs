@@ -1,16 +1,21 @@
 ﻿namespace FilmKirala.Application.DTOs
 {
-    // Kiralama İsteği (Kullanıcı ID'si Token'dan alınacak, buraya yazılmaz)
+    // Kiralama İsteği
     public record RentRequestDto(int MovieId, int PricingId);
 
-    // "Kiralamalarım" sayfasında görünecek liste
-    public record RentalListDto(
-        int Id,
-        string MovieTitle,
-        DateTime StartDate,
-        DateTime EndDate,
-        int TotalPrice,
-        bool IsActive, // Süresi dolmuş mu?
-        string RemainingTime // Örn: "2 Gün Kaldı"
-    );
+    // Kiralamalarım Listesi (Constructor hatasını gidermek için {} kullandık)
+    public record RentalListDto
+    {
+        public int Id { get; init; }
+        public string MovieTitle { get; set; } // Set edilebilir yaptık ki Service'de doldurabilelim
+        public DateTime StartRentalDate { get; init; } // Veritabanındaki isme uyumlu olsun
+        public DateTime EndRentalDate { get; init; }
+        public int TotalPrice { get; init; }
+        public bool Status { get; init; }
+
+        // Bu alanı hesaplatmak için getter kullanabiliriz
+        public string RemainingTime => EndRentalDate > DateTime.UtcNow
+            ? $"{(EndRentalDate - DateTime.UtcNow).Days} gün kaldı"
+            : "Süresi doldu";
+    }
 }

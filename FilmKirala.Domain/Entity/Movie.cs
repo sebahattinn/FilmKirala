@@ -17,17 +17,18 @@ namespace FilmKirala.Domain.Entity
         public bool IsActive { get; private set; }
 
 
-     
 
 
-       // private Movies() { }
+
+         private Movie() { }
         private readonly List<RentalPricing> _rentalPricings = new();
-        
+
         public IReadOnlyCollection<RentalPricing> RentalPricings => _rentalPricings;
-        public Movie(string title,string description, string genre, int stock, bool isActive) {
+        public Movie(string title, string description, string genre, int stock, bool isActive)
+        {
 
 
-            if (stock<0)
+            if (stock < 0)
             {
                 throw new ArgumentException("Kiralanacak film eksi olamaz"); //ben dşrekt exception kullanıyodum da pek sağlıklı değilmiş.
             }
@@ -35,7 +36,7 @@ namespace FilmKirala.Domain.Entity
             if (string.IsNullOrWhiteSpace(title) || title.Length >= 300)
             {
                 throw new ArgumentException("filmin adı boş olamaz ve 300 karakterden az olmalı");
-               
+
             }
 
             Title = title;
@@ -49,8 +50,16 @@ namespace FilmKirala.Domain.Entity
             var pricing = new RentalPricing(type, durationValue, price, this);
             _rentalPricings.Add(pricing);
         }
+        public void DecreaseStock()
+        {
+            if (Stock <= 0)
+            {
+                throw new Exception($"'{Title}' filmi için stok kalmadı!");
+            }
+            Stock--;
 
 
 
+        }
     }
 }

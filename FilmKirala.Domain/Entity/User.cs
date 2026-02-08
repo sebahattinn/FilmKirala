@@ -8,7 +8,7 @@ using FilmKirala.Domain.Enums;
 
 namespace FilmKirala.Domain.Entity
 {
-    public class User                          // Add-Migration InitialCreate               Update-Database
+    public class User
     {
         public int Id { get; private set; }
         public string Username { get; private set; }
@@ -16,11 +16,14 @@ namespace FilmKirala.Domain.Entity
         public string PasswordHash { get; private set; }
         public string PasswordSalt { get; private set; }
         public int WalletBalance { get; private set; }
-        //public bool Role { get; private set; }           bunun yerine roles enum'unu açtım.
         public DateTime CreatedAt { get; private set; }
         public Roles Roles { get; private set; }
 
-        public User(string username, string email, string passwordHash, string passwordSalt, int walletBalance,Roles roles )
+        // 👇 YENİ EKLENEN ALANLAR (Refresh Token için) 👇
+        public string? RefreshToken { get; private set; }
+        public DateTime? RefreshTokenExpiryTime { get; private set; }
+
+        public User(string username, string email, string passwordHash, string passwordSalt, int walletBalance, Roles roles)
         {
             Username = username;
             Email = email;
@@ -31,6 +34,19 @@ namespace FilmKirala.Domain.Entity
             CreatedAt = DateTime.UtcNow;
         }
 
+        public void DecreaseBalance(int amount)
+        {
+            if (amount < 0) throw new Exception("Düşülecek miktar eksi olamaz.");
+            if (WalletBalance < amount) throw new Exception($"Bakiye yetersiz! Mevcut: {WalletBalance}, Gereken: {amount}");
 
+            WalletBalance -= amount;
+        }
+
+        // 👇 YENİ EKLENEN METOT (Token güncellemek için) 👇
+        public void UpdateRefreshToken(string refreshToken, DateTime expiryTime)
+        {
+            RefreshToken = refreshToken;
+            RefreshTokenExpiryTime = expiryTime;
+        }
     }
 }

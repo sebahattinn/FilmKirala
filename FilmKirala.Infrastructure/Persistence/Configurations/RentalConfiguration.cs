@@ -13,19 +13,19 @@ namespace FilmKirala.Infrastructure.Persistence.Configurations
             // 1. User -> Rental İlişkisi
             builder.HasOne(r => r.User)
                    .WithMany()
-                   .HasForeignKey("UserId") // <--- Shadow Property
+                   .HasForeignKey(r => r.UserId) // ✅ String yerine Lambda
                    .OnDelete(DeleteBehavior.Cascade);
 
-            // 2. Movie -> Rental İlişkisi (Restrict: Film silinirse faturalar patlamasın)
+            // 2. Movie -> Rental İlişkisi
             builder.HasOne(r => r.Movie)
                    .WithMany()
-                   .HasForeignKey("MovieId") // <--- Shadow Property
+                   .HasForeignKey(r => r.MovieId) // ✅ String yerine Lambda
                    .OnDelete(DeleteBehavior.Restrict);
 
-            // 3. RentalPricing -> Rental İlişkisi (Fiyat tarifesi silinirse geçmiş bozulmasın)
+            // 3. RentalPricing -> Rental İlişkisi
             builder.HasOne(r => r.RentalPricing)
                    .WithMany()
-                   .HasForeignKey("RentalPricingId") // <--- Shadow Property
+                   .HasForeignKey(r => r.RentalPricingId) // ✅ String yerine Lambda
                    .OnDelete(DeleteBehavior.Restrict);
         }
     }

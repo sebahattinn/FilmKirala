@@ -11,18 +11,25 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
 
         // Properties
         builder.Property(u => u.Username)
-               .IsRequired()
-               .HasMaxLength(50);
+                .IsRequired()
+                .HasMaxLength(50);
 
         builder.Property(u => u.Email)
-               .IsRequired()
-               .HasMaxLength(100);
+                .IsRequired()
+                .HasMaxLength(100);
 
         builder.HasIndex(u => u.Username).IsUnique();
         builder.HasIndex(u => u.Email).IsUnique();
 
-        // Enum'ın veritabanında nasıl tutulacağı (İster string, ister int)
-        // int tutmak performanstır, string tutmak okunabilirliktir. Biz int (default) bırakıyoruz.
         builder.Property(u => u.Roles).IsRequired();
+
+        // 👇 YENİ EKLENEN AYARLAR 👇
+        // Refresh Token null olabilir (ilk kayıtta oluşmayabilir veya çıkış yapınca silinebilir)
+        builder.Property(u => u.RefreshToken)
+               .IsRequired(false)
+               .HasMaxLength(200); // 200 karakter yeterli
+
+        builder.Property(u => u.RefreshTokenExpiryTime)
+               .IsRequired(false);
     }
 }

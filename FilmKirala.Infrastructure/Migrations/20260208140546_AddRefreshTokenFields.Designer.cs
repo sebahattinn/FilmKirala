@@ -4,6 +4,7 @@ using FilmKirala.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace FilmKirala.Infrastructure.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260208140546_AddRefreshTokenFields")]
+    partial class AddRefreshTokenFields
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -69,7 +72,10 @@ namespace FilmKirala.Infrastructure.Migrations
                     b.Property<int>("MovieId")
                         .HasColumnType("int");
 
-                    b.Property<int>("RentalPricingId")
+                    b.Property<int>("RentalPriceId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("RentalPricingId")
                         .HasColumnType("int");
 
                     b.Property<DateTime>("StartRentalDate")
@@ -144,12 +150,17 @@ namespace FilmKirala.Infrastructure.Migrations
                     b.Property<int>("Rating")
                         .HasColumnType("int");
 
+                    b.Property<int?>("RentalPricingId")
+                        .HasColumnType("int");
+
                     b.Property<int>("UserId")
                         .HasColumnType("int");
 
                     b.HasKey("Id");
 
                     b.HasIndex("MovieId");
+
+                    b.HasIndex("RentalPricingId");
 
                     b.HasIndex("UserId");
 
@@ -220,8 +231,7 @@ namespace FilmKirala.Infrastructure.Migrations
                     b.HasOne("FilmKirala.Domain.Entity.RentalPricing", "RentalPricing")
                         .WithMany()
                         .HasForeignKey("RentalPricingId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("FilmKirala.Domain.Entity.User", "User")
                         .WithMany()
@@ -255,6 +265,10 @@ namespace FilmKirala.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("FilmKirala.Domain.Entity.RentalPricing", "RentalPricing")
+                        .WithMany()
+                        .HasForeignKey("RentalPricingId");
+
                     b.HasOne("FilmKirala.Domain.Entity.User", "User")
                         .WithMany()
                         .HasForeignKey("UserId")
@@ -262,6 +276,8 @@ namespace FilmKirala.Infrastructure.Migrations
                         .IsRequired();
 
                     b.Navigation("Movie");
+
+                    b.Navigation("RentalPricing");
 
                     b.Navigation("User");
                 });
