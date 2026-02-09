@@ -8,7 +8,7 @@ namespace FilmKirala.Api.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    [Authorize] // Yorum yapmak için giriş şart
+    [Authorize] 
     public class ReviewsController : ControllerBase
     {
         private readonly IReviewService _reviewService;

@@ -19,8 +19,6 @@ namespace FilmKirala.Application.Services
 
         public async Task AddReviewAsync(CreateReviewDto dto, int userId)
         {
-            // Kullanıcı bu filmi kiralamış mı kontrolü yapılabilir (İleri Seviye)
-            // Şimdilik herkes yorum yapabilsin.
 
             var review = new Review(
                 userId,

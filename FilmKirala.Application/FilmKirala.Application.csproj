@@ -16,4 +16,8 @@
     <ProjectReference Include="..\FilmKirala.Domain\FilmKirala.Domain.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="Validators\" />
+  </ItemGroup>
+
 </Project>

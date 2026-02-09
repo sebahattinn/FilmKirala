@@ -4,13 +4,11 @@ namespace FilmKirala.Application.Interfaces.Services
 {
     public interface IAuthService
     {
-        // Kullanıcıyı kaydeder, şifreyi hashler
-        Task<AuthResponseDto> RegisterAsync(RegisterRequestDto request);
+        
+        Task<AuthResponseDto> RegisterAsync(RegisterRequestDto request); // Kullanıcıyı kaydedip şifreyi hasleteceğim metot
 
-        // Kullanıcıyı doğrular, JWT Token üretip döner
-        Task<AuthResponseDto> LoginAsync(LoginRequestDto request);
+        Task<AuthResponseDto> LoginAsync(LoginRequestDto request); //JWT üretimi de burada yer alsın istiom
 
-        // 👇 YENİ METOT 👇
         Task<AuthResponseDto> RefreshTokenAsync(RefreshTokenRequestDto request);
     }
 }

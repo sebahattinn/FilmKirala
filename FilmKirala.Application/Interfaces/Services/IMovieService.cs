@@ -4,15 +4,8 @@ namespace FilmKirala.Application.Interfaces.Services
 {
     public interface IMovieService
     {
-        // Vitrin için tüm filmleri getirir
         Task<IEnumerable<MovieListDto>> GetAllMoviesAsync();
-
-        // Filmin detayını (Fiyatlar, Puanlar) getirir
-        Task<MovieDetailDto> GetMovieByIdAsync(int id);
-
-        // Yeni film ekler (DTO içinde fiyatlar da olacak)
+        Task<MovieDetailDto> GetMovieByIdAsync(int id); //filmlerin fiuat  ve puanlarını da getirebilmek için lazım olur
         Task AddMovieAsync(CreateMovieDto createMovieDto);
-
-        // Stok kontrolü vb. buradaki metodlar içinde dönecek
     }
 }

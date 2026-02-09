@@ -15,14 +15,11 @@ namespace FilmKirala.Domain.Entity
         public string Genre { get; private set; }
         public int Stock { get; private set; }
         public bool IsActive { get; private set; }
-
-
-
-
-
-         private Movie() { }
+        private Movie() { }
         private readonly List<RentalPricing> _rentalPricings = new();
 
+        private readonly List<Review> _reviews = new();
+        public IReadOnlyCollection<Review> Reviews => _reviews;
         public IReadOnlyCollection<RentalPricing> RentalPricings => _rentalPricings;
         public Movie(string title, string description, string genre, int stock, bool isActive)
         {

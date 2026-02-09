@@ -11,11 +11,9 @@ namespace FilmKirala.Infrastructure.Persistence
 {
     public class AppDbContext : DbContext
     {
-        public AppDbContext(DbContextOptions<AppDbContext> options) : base(options)
-        {
-        }
+        public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) { }
 
-        // Entityleri DbSet olarak tanımlıyorum
+        // Entityleri DbSet olarak tanımlıyorum  ki entitiy ile table eşleşmesi olsun herhangi bi sıkıntı yaşamayalım.
         public DbSet<Movie> Movies { get; set; }
         public DbSet<User> Users { get; set; }
         public DbSet<Rental> Rentals { get; set; }

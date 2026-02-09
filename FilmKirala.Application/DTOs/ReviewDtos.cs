@@ -9,10 +9,9 @@ namespace FilmKirala.Application.DTOs
         Rating Rating
     );
   
-    // Film Detayında Yorumları Listelerken (MovieDetailDto içinde kullanılacak)
     public record ReviewDto(
         int Id,
-        string Username, // User Id değil, görünen isim lazım
+        string Username,
         string Comment,
         int Rating,
         DateTime CreatedAt

@@ -19,7 +19,6 @@ namespace FilmKirala.Domain.Entity
         public DateTime CreatedAt { get; private set; }
         public Roles Roles { get; private set; }
 
-        // 👇 YENİ EKLENEN ALANLAR (Refresh Token için) 👇
         public string? RefreshToken { get; private set; }
         public DateTime? RefreshTokenExpiryTime { get; private set; }
 
@@ -42,7 +41,6 @@ namespace FilmKirala.Domain.Entity
             WalletBalance -= amount;
         }
 
-        // 👇 YENİ EKLENEN METOT (Token güncellemek için) 👇
         public void UpdateRefreshToken(string refreshToken, DateTime expiryTime)
         {
             RefreshToken = refreshToken;

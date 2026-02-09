@@ -9,18 +9,15 @@ namespace FilmKirala.Domain.Entity
         public int UserId { get; private set; }
         public int MovieId { get; private set; }
 
-        // --- Navigation Propertyler ---
-        public User? User { get; private set; }
+        public User? User { get; private set; }    //navigation property yani gezinmek için nesne üretmem lazımdı
         public Movie? Movie { get; private set; }
 
-        // 🗑️ SİLİNDİ: RentalPricingId ve RentalPricing (Gereksizdi)
 
         public Rating Rating { get; private set; }
         public string Comment { get; private set; }
         public DateTime CreatedAt { get; private set; }
 
-        // EF Core için boş constructor
-        private Review() { }
+        private Review() { }  //bu boş constractor EF için bu olmayınca mal oluyo
 
         public Review(int userId, int movieId, string comment, Rating rating)
         {

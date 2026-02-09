@@ -13,7 +13,6 @@ namespace FilmKirala.Domain.Entity
         public int UserId { get; private set; }
         public int MovieId { get; private set; }
 
-        // ✅ DÜZELTME: "RentalPriceId" gitti, "RentalPricingId" geldi.
         public int RentalPricingId { get; private set; }
 
         public DateTime StartRentalDate { get; private set; }
@@ -32,7 +31,7 @@ namespace FilmKirala.Domain.Entity
                 throw new Exception("Bedavaya film olmaz ab");
             }
 
-            // İlişkileri kuruyoruz
+            // İlişkileri kuruyorum
             User = user;
             UserId = user.Id; // ID'yi garantiye alıyoruz
 
@@ -40,7 +39,7 @@ namespace FilmKirala.Domain.Entity
             MovieId = movie.Id;
 
             RentalPricing = rentalPricing;
-            RentalPricingId = rentalPricing.Id; // ✅ Kritik Düzeltme: Doğru ID'yi atadık
+            RentalPricingId = rentalPricing.Id; 
 
             StartRentalDate = startRentalDate;
             EndRentalDate = endRentalDate;

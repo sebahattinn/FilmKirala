@@ -8,8 +8,7 @@ public class RentalPricingConfiguration : IEntityTypeConfiguration<RentalPricing
     {
         builder.HasKey(rp => rp.Id);
 
-        // Eğer property int ise veritabanında int tutulur.
-        // Eğer ileride decimal'a çevirirsen buraya .HasPrecision(18,2) eklemelisin.
+        // Eğer property int ise veritabanında int tutulur. //decimal'e çevrlilecekse .HasPrecision(18,2) eklemek lazım olur.
         builder.Property(rp => rp.Price).IsRequired();
     }
 }

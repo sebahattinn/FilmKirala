@@ -8,7 +8,7 @@ namespace FilmKirala.Api.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    [Authorize] // Bu controller'a sadece giriş yapmışlar girebilir!
+    [Authorize] // Bearer şartı koyduk
     public class RentalsController : ControllerBase
     {
         private readonly IRentalService _rentalService;
@@ -34,7 +34,6 @@ namespace FilmKirala.Api.Controllers
             }
             catch (Exception ex)
             {
-                // Service'den gelen "Bakiye yetersiz" gibi hataları burada yakalayıp 400 dönüyoruz
                 return BadRequest(new { error = ex.Message });
             }
         }
@@ -42,7 +41,6 @@ namespace FilmKirala.Api.Controllers
         [HttpGet("my-rentals")]
         public async Task<IActionResult> GetMyRentals()
         {
-            // Yine Token'dan ID çekiyoruz
             var userIdString = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             if (string.IsNullOrEmpty(userIdString)) return Unauthorized();
 

@@ -6,19 +6,17 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Serilog;
 using Microsoft.OpenApi.Models;
-
-// Kendi Namespace'lerin (Bunlarý eklemeyi unutma)
 using FilmKirala.Infrastructure.Persistence;
 using FilmKirala.Application.Interfaces.Repositories;
 using FilmKirala.Infrastructure.Repositories;
 using FilmKirala.Application.Interfaces;
 using FilmKirala.Application.Interfaces.Services;
 using FilmKirala.Application.Services;
-using FilmKirala.Application.Mappings; // AutoMapper profili buradaysa
+using FilmKirala.Application.Mappings;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// 1. Serilog Ayarý
+//  Serilog Ayarlarý
 Log.Logger = new LoggerConfiguration()
     .ReadFrom.Configuration(builder.Configuration)
     .CreateLogger();
@@ -30,40 +28,36 @@ var configuration = builder.Configuration;
 
 builder.Services.AddControllers();
 
-// 2. Database Baðlantýsý
+// DB baðlatnýsý
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlServer(configuration.GetConnectionString("DefaultConnection")));
 
-// 3. AutoMapper (En saðlam yöntem assembly belirtmektir)
-builder.Services.AddAutoMapper(typeof(MappingProfile).Assembly); // MappingProfile hangi katmandaysa onun assembly'sini tarar
 
-// 4. FluentValidation
+builder.Services.AddAutoMapper(typeof(MappingProfile).Assembly);
+
+//  FluentValidation Ayarý
 builder.Services.AddFluentValidationAutoValidation();
-builder.Services.AddValidatorsFromAssemblyContaining<Program>(); // Validatorlar API katmanýndaysa Program yeterli, Application'daysa oradan bir class ver.
+builder.Services.AddValidatorsFromAssemblyContaining<MappingProfile>();
 
-// ============================================================
-// ?? EKSÝK OLAN KISIM: DEPENDENCY INJECTION (DI) ??
-// ============================================================
 
-// Repositories
+
+
 builder.Services.AddScoped(typeof(IGenericRepository<>), typeof(GenericRepository<>));
 builder.Services.AddScoped<IMovieRepository, MovieRepository>();
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 
-// UnitOfWork
 builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 
-// Services
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IMovieService, MovieService>();
 
 builder.Services.AddScoped<IRentalService, RentalService>();
 builder.Services.AddScoped<IReviewService, ReviewService>();
 
-// ============================================================
 
-// 5. JWT Authentication
-var jwtSection = configuration.GetSection("JwtSettings"); // appsettings.json'da bu alanýn olduðundan emin ol!
+
+//JWT ayarlarý
+var jwtSection = configuration.GetSection("JwtSettings");
 var jwtKey = jwtSection["Key"] ?? throw new Exception("JwtSettings:Key not found!");
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -83,13 +77,12 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
 builder.Services.AddAuthorization();
 
-// 6. Swagger Config
+// Swagger ayarlarý
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
 {
     options.SwaggerDoc("v1", new OpenApiInfo { Title = "FilmKirala API", Version = "v1" });
 
-    // JWT Kilidi Ekleme
     options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
         Name = "Authorization",
@@ -126,7 +119,6 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
-// Sýralama Önemli: Önce Kimlik, Sonra Yetki
 app.UseAuthentication();
 app.UseAuthorization();
 

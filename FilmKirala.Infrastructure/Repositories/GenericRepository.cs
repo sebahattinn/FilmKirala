@@ -5,8 +5,8 @@ using System.Linq.Expressions;
 
 namespace FilmKirala.Infrastructure.Repositories
 {
-    public class GenericRepository<T> : IGenericRepository<T> where T : class
-    {
+    public class GenericRepository<T> : IGenericRepository<T> where T : class //CRUD işlemleri için Generic (<T>) oluşturup her yerde kullanıyom
+    {                                                                         //Yani burası bi şablon, teamplate ab <T> sınıf tutuyor.
         protected readonly AppDbContext _context;
         private readonly DbSet<T> _dbSet;
 

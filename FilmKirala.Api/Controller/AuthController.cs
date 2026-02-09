@@ -4,7 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace FilmKirala.Api.Controllers
 {
-    [Route("api/[controller]")]
+    [Route("api/[controller]")]                         //Controller'lar olabildiğince sade tıpkı halil abimin istediği gibi
     [ApiController]
     public class AuthController : ControllerBase
     {
@@ -29,7 +29,6 @@ namespace FilmKirala.Api.Controllers
             return Ok(result);
         }
 
-        // 👇 YENİ ENDPOINT 👇
         [HttpPost("refresh-token")]
         public async Task<IActionResult> RefreshToken([FromBody] RefreshTokenRequestDto request)
         {

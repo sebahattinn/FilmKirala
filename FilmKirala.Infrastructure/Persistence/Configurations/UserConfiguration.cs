@@ -9,7 +9,6 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
         // Primary Key
         builder.HasKey(u => u.Id);
 
-        // Properties
         builder.Property(u => u.Username)
                 .IsRequired()
                 .HasMaxLength(50);
@@ -23,11 +22,9 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
 
         builder.Property(u => u.Roles).IsRequired();
 
-        // 👇 YENİ EKLENEN AYARLAR 👇
-        // Refresh Token null olabilir (ilk kayıtta oluşmayabilir veya çıkış yapınca silinebilir)
         builder.Property(u => u.RefreshToken)
                .IsRequired(false)
-               .HasMaxLength(200); // 200 karakter yeterli
+               .HasMaxLength(200); 
 
         builder.Property(u => u.RefreshTokenExpiryTime)
                .IsRequired(false);

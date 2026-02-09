@@ -4,10 +4,10 @@
 
 namespace FilmKirala.Infrastructure.Migrations
 {
-    /// <inheritdoc />
+    
     public partial class CleanUpDatabaseColumns : Migration
     {
-        /// <inheritdoc />
+       
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropForeignKey(
@@ -37,7 +37,7 @@ namespace FilmKirala.Infrastructure.Migrations
                 oldNullable: true);
         }
 
-        /// <inheritdoc />
+        
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.AddColumn<int>(

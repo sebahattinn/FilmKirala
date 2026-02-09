@@ -39,16 +39,14 @@ namespace FilmKirala.Application.Services
                 Roles.User
             );
 
-            // 👇 Refresh Token Oluştur ve Kaydet 👇
             var refreshToken = GenerateRefreshToken();
-            user.UpdateRefreshToken(refreshToken, DateTime.UtcNow.AddDays(7)); // 7 gün geçerli
+            user.UpdateRefreshToken(refreshToken, DateTime.UtcNow.AddDays(2)); // 2 gün geçerli
 
             await _unitOfWork.Users.AddAsync(user);
             await _unitOfWork.CompleteAsync();
 
             string accessToken = CreateToken(user);
 
-            // Response'a RefreshToken'ı da ekledik
             return new AuthResponseDto(user.Id, user.Username, user.Email, accessToken, user.RefreshToken, user.Roles.ToString(), user.WalletBalance);
         }
 
@@ -60,7 +58,6 @@ namespace FilmKirala.Application.Services
             if (!VerifyPasswordHash(request.Password, Convert.FromBase64String(user.PasswordHash), Convert.FromBase64String(user.PasswordSalt)))
                 throw new Exception("Şifre yanlış.");
 
-            // 👇 Login olunca Refresh Token yenile (Rotation) 👇
             var refreshToken = GenerateRefreshToken();
             user.UpdateRefreshToken(refreshToken, DateTime.UtcNow.AddDays(7));
             await _unitOfWork.CompleteAsync();
@@ -69,27 +66,35 @@ namespace FilmKirala.Application.Services
 
             return new AuthResponseDto(user.Id, user.Username, user.Email, accessToken, user.RefreshToken, user.Roles.ToString(), user.WalletBalance);
         }
-
-        // 👇 YENİ METOT: TOKEN YENİLEME İŞLEMİ 👇
         public async Task<AuthResponseDto> RefreshTokenAsync(RefreshTokenRequestDto request)
         {
-            // 1. Süresi bitmiş Access Token'dan User Id'yi çıkart
+          
             var principal = GetPrincipalFromExpiredToken(request.AccessToken);
-            if (principal == null) throw new Exception("Geçersiz Token");
+            if (principal == null) throw new Exception("Geçersiz Token (Principal oluşturulamadı)"); //Süresi bitmiş Access Token'dan User Id'yi çıkart
 
             var userIdStr = principal.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            if (string.IsNullOrEmpty(userIdStr)) throw new Exception("Token içinde ID bulunamadı");
 
-            // 2. Kullanıcıyı DB'den bul
-            var user = await _unitOfWork.Users.GetByIdAsync(int.Parse(userIdStr));
 
-            // 3. Refresh Token Kontrolü (DB'deki ile uyuşuyor mu? Süresi dolmuş mu?)
-            if (user == null || user.RefreshToken != request.RefreshToken || user.RefreshTokenExpiryTime <= DateTime.UtcNow)
+            if (string.IsNullOrEmpty(userIdStr) || !int.TryParse(userIdStr, out int userId)) //parse ile token kontroplü
             {
-                throw new Exception("Geçersiz veya süresi dolmuş Refresh Token. Lütfen tekrar giriş yapın.");
+                throw new Exception("Token içinde geçerli bir Kullanıcı ID'si bulunamadı!");
             }
 
-            // 4. Yeni Çift Oluştur (Hem Access Hem Refresh değişir)
+
+            var user = await _unitOfWork.Users.GetByIdAsync(userId);
+
+            if (user == null || user.RefreshTokenExpiryTime <= DateTime.UtcNow)
+            {
+                throw new Exception("Oturum süreniz dolmuş veya kullanıcı bulunamadı. Lütfen tekrar giriş yapın.");
+            }
+
+            if (user.RefreshToken != request.RefreshToken)
+            {
+                user.UpdateRefreshToken(null, DateTime.UtcNow); // Token'ı öldür yani Revoke
+                await _unitOfWork.CompleteAsync();
+                throw new Exception("Güvenlik Uyarısı: Eski bir token kullanıldı! Hesabınız güvenliği için oturum kapatıldı.");
+            }
+
             var newAccessToken = CreateToken(user);
             var newRefreshToken = GenerateRefreshToken();
 
@@ -98,8 +103,6 @@ namespace FilmKirala.Application.Services
 
             return new AuthResponseDto(user.Id, user.Username, user.Email, newAccessToken, newRefreshToken, user.Roles.ToString(), user.WalletBalance);
         }
-
-        // --- PRIVATE METHODS ---
 
         private void CreatePasswordHash(string password, out byte[] passwordHash, out byte[] passwordSalt)
         {
@@ -118,8 +121,6 @@ namespace FilmKirala.Application.Services
                 return computedHash.SequenceEqual(storedHash);
             }
         }
-
-        // Access Token Üretici (Senin düzelttiğin hali)
         private string CreateToken(User user)
         {
             var claims = new List<Claim>
@@ -141,14 +142,13 @@ namespace FilmKirala.Application.Services
                 issuer: _configuration["JwtSettings:Issuer"],
                 audience: _configuration["JwtSettings:Audience"],
                 claims: claims,
-                expires: DateTime.UtcNow.AddMinutes(15), // Access Token ömrü kısa olur (15 dk)
+                expires: DateTime.UtcNow.AddMinutes(15), // Access Token ömrü 15dk
                 signingCredentials: creds
             );
 
             return new JwtSecurityTokenHandler().WriteToken(token);
         }
 
-        // 👇 Rastgele Refresh Token Üreten Metot 👇
         private string GenerateRefreshToken()
         {
             var randomNumber = new byte[64];
@@ -156,8 +156,6 @@ namespace FilmKirala.Application.Services
             rng.GetBytes(randomNumber);
             return Convert.ToBase64String(randomNumber);
         }
-
-        // 👇 Süresi bitmiş token'ı okuyan kritik metot 👇
         private ClaimsPrincipal? GetPrincipalFromExpiredToken(string? token)
         {
             var keyString = _configuration.GetSection("JwtSettings:Key").Value;
@@ -167,7 +165,7 @@ namespace FilmKirala.Application.Services
                 ValidateIssuer = false,
                 ValidateIssuerSigningKey = true,
                 IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(keyString!)),
-                ValidateLifetime = false // ÖNEMLİ: Süre kontrolünü kapatıyoruz ki okuyabilelim
+                ValidateLifetime = false
             };
 
             var tokenHandler = new JwtSecurityTokenHandler();

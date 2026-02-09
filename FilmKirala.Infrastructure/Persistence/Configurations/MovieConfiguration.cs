@@ -12,12 +12,17 @@ namespace FilmKirala.Infrastructure.Persistence.Configurations
             builder.Property(m => m.Title).IsRequired().HasMaxLength(300);
             builder.Property(m => m.Description).HasMaxLength(1000);
 
-            // Movie -> RentalPricing İlişkisi
-            // Bir filmin çokça fiyat seçeneği olabilir.
+          
             builder.HasMany(m => m.RentalPricings)
                    .WithOne(rp => rp.Movie)
-                   .HasForeignKey("MovieId") // <--- RentalPricing tablosunda gizli MovieId oluşur
+                   .HasForeignKey("MovieId")
                    .OnDelete(DeleteBehavior.Cascade);
+
+              //özel ayarlar bir filmin birden fazla yorumu olur, bir yorumun tek filmi olur ve en son da film silinirse yorumlarda silinir.
+            builder.HasMany(m => m.Reviews)       
+                   .WithOne(r => r.Movie)        
+                   .HasForeignKey(r => r.MovieId) 
+                   .OnDelete(DeleteBehavior.Cascade); 
         }
     }
 }

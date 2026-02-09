@@ -14,8 +14,6 @@ namespace FilmKirala.Domain.Entity
         public DurationType DurationType { get; private set; }
         public int DurationValue { get; private set; }
         public int Price { get; private set; }
-
-
         public Movie Movie { get; private set; }
 
         private RentalPricing() { }

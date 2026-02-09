@@ -19,7 +19,7 @@ namespace FilmKirala.Infrastructure.Repositories
         {
             _context = context;
 
-            // Repository'leri burada new'liyoruz
+            // Repository'leri burada new'liyoruz   çok hoşuma gitmedi de başka türlü beceremedim valla
             Movies = new MovieRepository(_context);
             Users = new UserRepository(_context);
             Rentals = new GenericRepository<Rental>(_context);
@@ -29,7 +29,6 @@ namespace FilmKirala.Infrastructure.Repositories
 
         public async Task<int> CompleteAsync()
         {
-            // Tüm işlemleri veritabanına tek seferde kaydeder
             return await _context.SaveChangesAsync();
         }
 

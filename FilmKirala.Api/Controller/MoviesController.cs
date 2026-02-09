@@ -15,7 +15,6 @@ namespace FilmKirala.Api.Controllers
         {
             _movieService = movieService;
         }
-
         [HttpGet]
         public async Task<IActionResult> GetAll()
         {
@@ -30,8 +29,8 @@ namespace FilmKirala.Api.Controllers
             return Ok(result);
         }
 
-        // Sadece giriş yapmış kullanıcılar film ekleyebilir (Normalde Admin olmalı)
-        [Authorize]
+        // Rol bazlı film ekleme yapıyoruz ab
+        [Authorize(Roles ="Admin")]
         [HttpPost]
         public async Task<IActionResult> Add([FromBody] CreateMovieDto request)
         {
