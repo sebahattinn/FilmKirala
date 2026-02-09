@@ -24,7 +24,6 @@ namespace FilmKirala.Domain.Entity
         public Movie(string title, string description, string genre, int stock, bool isActive)
         {
 
-
             if (stock < 0)
             {
                 throw new ArgumentException("Kiralanacak film eksi olamaz"); //ben dşrekt exception kullanıyodum da pek sağlıklı değilmiş.
@@ -54,9 +53,10 @@ namespace FilmKirala.Domain.Entity
                 throw new Exception($"'{Title}' filmi için stok kalmadı!");
             }
             Stock--;
-
-
-
+        }
+        public void IncreaseStock()
+        {
+            Stock++;
         }
     }
 }

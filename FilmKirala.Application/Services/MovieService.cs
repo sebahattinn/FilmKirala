@@ -3,6 +3,7 @@ using FilmKirala.Application.DTOs;
 using FilmKirala.Application.Interfaces;
 using FilmKirala.Application.Interfaces.Services;
 using FilmKirala.Domain.Entity;
+using FilmKirala.Domain.Enums;
 
 namespace FilmKirala.Application.Services
 {
@@ -19,7 +20,7 @@ namespace FilmKirala.Application.Services
 
         public async Task AddMovieAsync(CreateMovieDto dto)
         {
-            var movie = new Movie(      
+            var movie = new Movie(
                 dto.Title,
                 dto.Description,
                 dto.Genre,
@@ -53,9 +54,31 @@ namespace FilmKirala.Application.Services
         {
             var movie = await _unitOfWork.Movies.GetMovieWithDetailsAsync(id);
 
-            if (movie == null) throw new Exception("Film bulunamadı!");
+            // if (movie == null) throw new Exception("Film bulunamadı!");
+            if (movie == null)
+            {
+                throw new KeyNotFoundException($"HATA: {id} ID'li film sistemde bulunamadı! Lütfen geçerli bir ID giriniz.");
+            }
 
             return _mapper.Map<MovieDetailDto>(movie);
+        }
+
+        public async Task AddRentalPricingAsync(int movieId, DurationType durationType, int price)
+        {
+            var movie = await _unitOfWork.Movies.GetByIdAsync(movieId);
+            if (movie == null) throw new Exception("Film bulunamadı.");
+
+            var existingPricings = await _unitOfWork.RentalPricings.FindAsync(x => x.MovieId == movieId && x.DurationType == durationType);
+
+            if (existingPricings.Any())
+            {
+                throw new Exception($"Bu film için '{durationType}' fiyatlandırması zaten yapılmış! Aynı türden iki fiyat olamaz.");
+            }
+
+            var newPricing = new RentalPricing(durationType, 1, price, movie);
+
+            await _unitOfWork.RentalPricings.AddAsync(newPricing);
+            await _unitOfWork.CompleteAsync();
         }
     }
 }

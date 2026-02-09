@@ -68,7 +68,7 @@ namespace FilmKirala.Application.Services
         }
         public async Task<AuthResponseDto> RefreshTokenAsync(RefreshTokenRequestDto request)
         {
-          
+
             var principal = GetPrincipalFromExpiredToken(request.AccessToken);
             if (principal == null) throw new Exception("Geçersiz Token (Principal oluşturulamadı)"); //Süresi bitmiş Access Token'dan User Id'yi çıkart
 
@@ -125,15 +125,14 @@ namespace FilmKirala.Application.Services
         {
             var claims = new List<Claim>
             {
-                new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
-                new Claim(ClaimTypes.Name, user.Username),
+                new Claim(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
                 new Claim(ClaimTypes.Role, user.Roles.ToString())
             };
 
             var keyString = _configuration.GetSection("JwtSettings:Key").Value;
 
             if (string.IsNullOrEmpty(keyString))
-                throw new Exception("JwtSettings:Key değeri appsettings.json dosyasından okunamadı!");
+                throw new Exception("JwtSettings:Key değeri appsettings.json dosyasından okunamadı");
 
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(keyString));
             var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha512Signature);

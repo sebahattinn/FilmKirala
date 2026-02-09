@@ -16,9 +16,11 @@ namespace FilmKirala.Application.Services
             _unitOfWork = unitOfWork;
             _mapper = mapper;
         }
-
         public async Task AddReviewAsync(CreateReviewDto dto, int userId)
         {
+            var movie = await _unitOfWork.Movies.GetByIdAsync(dto.MovieId);
+            if (movie == null)
+                throw new Exception($"'{dto.MovieId}' ID'li film bulunamadı! Olmayan filme yorum yapamazsınız.");
 
             var review = new Review(
                 userId,
@@ -26,7 +28,6 @@ namespace FilmKirala.Application.Services
                 dto.Comment,
                 dto.Rating
             );
-
             await _unitOfWork.Reviews.AddAsync(review);
             await _unitOfWork.CompleteAsync();
         }

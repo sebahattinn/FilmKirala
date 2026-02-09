@@ -12,9 +12,7 @@ namespace FilmKirala.Domain.Entity
         public int Id { get; private set; }
         public int UserId { get; private set; }
         public int MovieId { get; private set; }
-
         public int RentalPricingId { get; private set; }
-
         public DateTime StartRentalDate { get; private set; }
         public DateTime EndRentalDate { get; private set; }
         public int TotalPrice { get; private set; }
@@ -39,12 +37,16 @@ namespace FilmKirala.Domain.Entity
             MovieId = movie.Id;
 
             RentalPricing = rentalPricing;
-            RentalPricingId = rentalPricing.Id; 
+            RentalPricingId = rentalPricing.Id;
 
             StartRentalDate = startRentalDate;
             EndRentalDate = endRentalDate;
             TotalPrice = totalPrice;
             Status = status;
+        }
+        public void ExpireRental()
+        {
+            Status = false;
         }
     }
 }

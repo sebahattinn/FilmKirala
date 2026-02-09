@@ -29,11 +29,13 @@ namespace FilmKirala.Api.Controllers
 
             try
             {
-                await _rentalService.RentMovieAsync(request, userId);
-                return Ok(new { message = "İşlem başarılı! İyi seyirler." });
+                // Service artık bize detaylı fiş dönüyor
+                var result = await _rentalService.RentMovieAsync(request, userId);
+                return Ok(result);
             }
             catch (Exception ex)
             {
+                // Yetersiz bakiye vb. hatalar burada yakalanıp dönülecek
                 return BadRequest(new { error = ex.Message });
             }
         }

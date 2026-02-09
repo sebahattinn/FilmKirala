@@ -36,6 +36,7 @@ namespace FilmKirala.Domain.Entity
         public void DecreaseBalance(int amount)
         {
             if (amount < 0) throw new Exception("Düşülecek miktar eksi olamaz.");
+            // Yetersiz bakiye hatası burada fırlatılıyor, Service bunu yakalayacak.
             if (WalletBalance < amount) throw new Exception($"Bakiye yetersiz! Mevcut: {WalletBalance}, Gereken: {amount}");
 
             WalletBalance -= amount;

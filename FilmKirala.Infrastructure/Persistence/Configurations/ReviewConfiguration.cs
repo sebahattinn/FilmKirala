@@ -17,7 +17,8 @@ namespace FilmKirala.Infrastructure.Persistence.Configurations
                    .OnDelete(DeleteBehavior.Cascade); 
 
             builder.HasOne(r => r.Movie)
-                   .WithMany()
+                  
+                   .WithMany(m => m.Reviews)
                    .HasForeignKey(r => r.MovieId) 
                    .OnDelete(DeleteBehavior.Cascade);
         }

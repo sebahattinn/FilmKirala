@@ -4,6 +4,7 @@ using FilmKirala.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace FilmKirala.Infrastructure.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260209071626_MovieReviewIliskisiEklendi")]
+    partial class MovieReviewIliskisiEklendi
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -141,6 +144,9 @@ namespace FilmKirala.Infrastructure.Migrations
                     b.Property<int>("MovieId")
                         .HasColumnType("int");
 
+                    b.Property<int?>("MovieId1")
+                        .HasColumnType("int");
+
                     b.Property<int>("Rating")
                         .HasColumnType("int");
 
@@ -150,6 +156,8 @@ namespace FilmKirala.Infrastructure.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("MovieId");
+
+                    b.HasIndex("MovieId1");
 
                     b.HasIndex("UserId");
 
@@ -250,10 +258,14 @@ namespace FilmKirala.Infrastructure.Migrations
             modelBuilder.Entity("FilmKirala.Domain.Entity.Review", b =>
                 {
                     b.HasOne("FilmKirala.Domain.Entity.Movie", "Movie")
-                        .WithMany("Reviews")
+                        .WithMany()
                         .HasForeignKey("MovieId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.HasOne("FilmKirala.Domain.Entity.Movie", null)
+                        .WithMany("Reviews")
+                        .HasForeignKey("MovieId1");
 
                     b.HasOne("FilmKirala.Domain.Entity.User", "User")
                         .WithMany()

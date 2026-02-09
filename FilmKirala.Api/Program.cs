@@ -1,4 +1,4 @@
-using System.Text;
+ï»¿using System.Text;
 using FluentValidation;
 using FluentValidation.AspNetCore;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -13,10 +13,13 @@ using FilmKirala.Application.Interfaces;
 using FilmKirala.Application.Interfaces.Services;
 using FilmKirala.Application.Services;
 using FilmKirala.Application.Mappings;
+using FilmKirala.Api.Middlewares;
+using Microsoft.AspNetCore.Mvc;
+using FilmKirala.Api.Filters;
 
 var builder = WebApplication.CreateBuilder(args);
 
-//  Serilog Ayarlarý
+//  Serilog AyarlarÄ±
 Log.Logger = new LoggerConfiguration()
     .ReadFrom.Configuration(builder.Configuration)
     .CreateLogger();
@@ -26,20 +29,26 @@ var configuration = builder.Configuration;
 
 #region SERVICES
 
-builder.Services.AddControllers();
+builder.Services.Configure<ApiBehaviorOptions>(options =>
+{
+    options.SuppressModelStateInvalidFilter = true;
+});
 
-// DB baðlatnýsý
+builder.Services.AddControllers(options =>
+{
+    options.Filters.Add<ValidationFilter>();
+});
+
+// DB baÄŸlatnÄ±sÄ±
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlServer(configuration.GetConnectionString("DefaultConnection")));
 
 
 builder.Services.AddAutoMapper(typeof(MappingProfile).Assembly);
 
-//  FluentValidation Ayarý
+//  FluentValidation AyarÄ±
 builder.Services.AddFluentValidationAutoValidation();
 builder.Services.AddValidatorsFromAssemblyContaining<MappingProfile>();
-
-
 
 
 builder.Services.AddScoped(typeof(IGenericRepository<>), typeof(GenericRepository<>));
@@ -55,8 +64,7 @@ builder.Services.AddScoped<IRentalService, RentalService>();
 builder.Services.AddScoped<IReviewService, ReviewService>();
 
 
-
-//JWT ayarlarý
+//JWT ayarlarÄ±
 var jwtSection = configuration.GetSection("JwtSettings");
 var jwtKey = jwtSection["Key"] ?? throw new Exception("JwtSettings:Key not found!");
 
@@ -77,7 +85,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
 builder.Services.AddAuthorization();
 
-// Swagger ayarlarý
+// Swagger ayarlarÄ±
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
 {
@@ -110,7 +118,7 @@ builder.Services.AddSwaggerGen(options =>
 var app = builder.Build();
 
 #region PIPELINE
-
+app.UseMiddleware<GlobalExceptionMiddleware>();
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
