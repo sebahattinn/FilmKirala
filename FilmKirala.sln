@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
-VisualStudioVersion = 17.14.36414.22 d17.14
+VisualStudioVersion = 17.14.36414.22
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FilmKirala.Api", "FilmKirala.Api\FilmKirala.Api.csproj", "{6F0BCB14-05CF-4EA8-804A-15D37C4C5C48}"
 EndProject
@@ -10,6 +10,17 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FilmKirala.Application", "FilmKirala.Application\FilmKirala.Application.csproj", "{75D48A57-46F2-48CE-B57A-4E2E8C108F2A}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FilmKirala.Infrastructure", "FilmKirala.Infrastructure\FilmKirala.Infrastructure.csproj", "{75964CFD-5D41-42ED-B47D-71481A46DB56}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Çözüm Öğeleri", "Çözüm Öğeleri", "{AC80F682-3D55-C8F8-4895-A4A9EDD49434}"
+	ProjectSection(SolutionItems) = preProject
+		.gitignore = .gitignore
+	EndProjectSection
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FilmKirala.Notification.Api", "FilmKirala.Notification.Api\FilmKirala.Notification.Api.csproj", "{2D6239BE-CBC3-421A-8CC8-EE25D7C0B005}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FilmKirala.Shared", "FilmKirala.Shared\FilmKirala.Shared.csproj", "{6766CB56-EC90-41F0-8164-BDFD239E1E65}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FilmKirala.Test", "FilmKirala.Test\FilmKirala.Test.csproj", "{75CFB83C-806E-454C-A7FF-C1AAE895FA01}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -33,6 +44,18 @@ Global
 		{75964CFD-5D41-42ED-B47D-71481A46DB56}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{75964CFD-5D41-42ED-B47D-71481A46DB56}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{75964CFD-5D41-42ED-B47D-71481A46DB56}.Release|Any CPU.Build.0 = Release|Any CPU
+		{2D6239BE-CBC3-421A-8CC8-EE25D7C0B005}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2D6239BE-CBC3-421A-8CC8-EE25D7C0B005}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2D6239BE-CBC3-421A-8CC8-EE25D7C0B005}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2D6239BE-CBC3-421A-8CC8-EE25D7C0B005}.Release|Any CPU.Build.0 = Release|Any CPU
+		{6766CB56-EC90-41F0-8164-BDFD239E1E65}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6766CB56-EC90-41F0-8164-BDFD239E1E65}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6766CB56-EC90-41F0-8164-BDFD239E1E65}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6766CB56-EC90-41F0-8164-BDFD239E1E65}.Release|Any CPU.Build.0 = Release|Any CPU
+		{75CFB83C-806E-454C-A7FF-C1AAE895FA01}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{75CFB83C-806E-454C-A7FF-C1AAE895FA01}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{75CFB83C-806E-454C-A7FF-C1AAE895FA01}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{75CFB83C-806E-454C-A7FF-C1AAE895FA01}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

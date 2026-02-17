@@ -18,66 +18,42 @@ namespace FilmKirala.Application.Services
             _mapper = mapper;
         }
 
-        public async Task AddMovieAsync(CreateMovieDto dto)
+        public async Task<IEnumerable<MovieListDto>> GetAllMoviesAsync(int page = 1, int pageSize = 20)
         {
-            var movie = new Movie(
-                dto.Title,
-                dto.Description,
-                dto.Genre,
-                dto.Stock,
-                true // Yeni eklenen film default olarak aktiftir
-            );
+            // Sayfalama parametrelerini zorunlu hale getirdik
+            var movies = await _unitOfWork.Movies.GetPagedAsync(page, pageSize);
+            return _mapper.Map<IEnumerable<MovieListDto>>(movies);
+        }
 
-            if (dto.Pricings != null && dto.Pricings.Any())
+        public async Task<MovieDetailDto?> GetMovieByIdAsync(int id)
+        {
+            var movie = await _unitOfWork.Movies.GetMovieWithDetailsAsync(id);
+            if (movie == null) throw new KeyNotFoundException($"Film bulunamadı (ID: {id})");
+
+            return _mapper.Map<MovieDetailDto>(movie);
+        }
+
+        public async Task AddMovieAsync(CreateMovieDto createMovieDto)
+        {
+            //  Movie constructor parametre sırasını kontroledem
+            var movie = new Movie(createMovieDto.Title, createMovieDto.Description, createMovieDto.Genre, createMovieDto.Stock, true);
+
+            if (createMovieDto.Pricings != null)
             {
-                foreach (var priceDto in dto.Pricings)
-                {
-                    movie.AddRentalPricing(
-                        priceDto.DurationType,
-                        priceDto.DurationValue,
-                        priceDto.Price
-                    );
-                }
+                foreach (var price in createMovieDto.Pricings)
+                    movie.AddRentalPricing(price.DurationType, price.DurationValue, price.Price);
             }
 
             await _unitOfWork.Movies.AddAsync(movie);
             await _unitOfWork.CompleteAsync();
         }
 
-        public async Task<IEnumerable<MovieListDto>> GetAllMoviesAsync()
-        {
-            var movies = await _unitOfWork.Movies.GetAllAsync();
-            return _mapper.Map<IEnumerable<MovieListDto>>(movies);
-        }
-
-        public async Task<MovieDetailDto> GetMovieByIdAsync(int id)
-        {
-            var movie = await _unitOfWork.Movies.GetMovieWithDetailsAsync(id);
-
-            // if (movie == null) throw new Exception("Film bulunamadı!");
-            if (movie == null)
-            {
-                throw new KeyNotFoundException($"HATA: {id} ID'li film sistemde bulunamadı! Lütfen geçerli bir ID giriniz.");
-            }
-
-            return _mapper.Map<MovieDetailDto>(movie);
-        }
-
         public async Task AddRentalPricingAsync(int movieId, DurationType durationType, int price)
         {
             var movie = await _unitOfWork.Movies.GetByIdAsync(movieId);
-            if (movie == null) throw new Exception("Film bulunamadı.");
+            if (movie == null) throw new KeyNotFoundException("Film bulunamadı.");
 
-            var existingPricings = await _unitOfWork.RentalPricings.FindAsync(x => x.MovieId == movieId && x.DurationType == durationType);
-
-            if (existingPricings.Any())
-            {
-                throw new Exception($"Bu film için '{durationType}' fiyatlandırması zaten yapılmış! Aynı türden iki fiyat olamaz.");
-            }
-
-            var newPricing = new RentalPricing(durationType, 1, price, movie);
-
-            await _unitOfWork.RentalPricings.AddAsync(newPricing);
+            movie.AddRentalPricing(durationType, 1, price);
             await _unitOfWork.CompleteAsync();
         }
     }

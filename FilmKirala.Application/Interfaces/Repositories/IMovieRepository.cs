@@ -4,6 +4,6 @@ namespace FilmKirala.Application.Interfaces.Repositories
 {
     public interface IMovieRepository : IGenericRepository<Movie>
     {
-        Task<Movie> GetMovieWithDetailsAsync(int id); //Fiyat seçeneği ve yorum da getirebilelim diye bunu yazdım
+        Task<Movie?> GetMovieWithDetailsAsync(int id); //fiyat seçeneği ve yorum için.
     }
 }

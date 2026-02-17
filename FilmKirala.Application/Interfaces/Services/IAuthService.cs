@@ -10,5 +10,7 @@ namespace FilmKirala.Application.Interfaces.Services
         Task<AuthResponseDto> LoginAsync(LoginRequestDto request); //JWT üretimi de burada yer alsın istiom
 
         Task<AuthResponseDto> RefreshTokenAsync(RefreshTokenRequestDto request);
+
+        Task UpdateUserBalanceAsync(string email, int newBalance); //adminin bakiye güncellemesi için
     }
 }

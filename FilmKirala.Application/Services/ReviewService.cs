@@ -1,35 +1,28 @@
-﻿using AutoMapper;
-using FilmKirala.Application.DTOs;
+﻿using FilmKirala.Application.DTOs;
 using FilmKirala.Application.Interfaces;
 using FilmKirala.Application.Interfaces.Services;
 using FilmKirala.Domain.Entity;
+using FilmKirala.Domain.Enums;
 
 namespace FilmKirala.Application.Services
 {
-    public class ReviewService : IReviewService
+    public class ReviewService(IUnitOfWork unitOfWork) : IReviewService
     {
-        private readonly IUnitOfWork _unitOfWork;
-        private readonly IMapper _mapper;
-
-        public ReviewService(IUnitOfWork unitOfWork, IMapper mapper)
+      
+        public async Task AddReviewAsync(CreateReviewDto createReviewDto, int userId)
         {
-            _unitOfWork = unitOfWork;
-            _mapper = mapper;
-        }
-        public async Task AddReviewAsync(CreateReviewDto dto, int userId)
-        {
-            var movie = await _unitOfWork.Movies.GetByIdAsync(dto.MovieId);
-            if (movie == null)
-                throw new Exception($"'{dto.MovieId}' ID'li film bulunamadı! Olmayan filme yorum yapamazsınız.");
+            _ = await unitOfWork.Movies.GetByIdAsync(createReviewDto.MovieId)
+                ?? throw new KeyNotFoundException($"'{createReviewDto.MovieId}' ID'li film bulunamadı!");
 
             var review = new Review(
                 userId,
-                dto.MovieId,
-                dto.Comment,
-                dto.Rating
+                createReviewDto.MovieId,
+                createReviewDto.Comment,
+                (Rating)createReviewDto.Rating
             );
-            await _unitOfWork.Reviews.AddAsync(review);
-            await _unitOfWork.CompleteAsync();
+
+            await unitOfWork.Reviews.AddAsync(review);
+            await unitOfWork.CompleteAsync();
         }
     }
 }

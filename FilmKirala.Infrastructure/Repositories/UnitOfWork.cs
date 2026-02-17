@@ -8,33 +8,44 @@ namespace FilmKirala.Infrastructure.Repositories
     public class UnitOfWork : IUnitOfWork
     {
         private readonly AppDbContext _context;
+        private bool _disposed;
 
-        public IMovieRepository Movies { get; private set; }
-        public IUserRepository Users { get; private set; }
-        public IGenericRepository<Rental> Rentals { get; private set; }
-        public IGenericRepository<Review> Reviews { get; private set; }
-        public IGenericRepository<RentalPricing> RentalPricings { get; private set; }
-
-        public UnitOfWork(AppDbContext context)
+        public UnitOfWork(AppDbContext context,
+                          IMovieRepository movieRepository,
+                          IUserRepository userRepository)
         {
             _context = context;
-
-            // Repository'leri burada new'liyoruz   çok hoşuma gitmedi de başka türlü beceremedim valla
-            Movies = new MovieRepository(_context);
-            Users = new UserRepository(_context);
+            Movies = movieRepository;
+            Users = userRepository;
             Rentals = new GenericRepository<Rental>(_context);
             Reviews = new GenericRepository<Review>(_context);
             RentalPricings = new GenericRepository<RentalPricing>(_context);
         }
 
-        public async Task<int> CompleteAsync()
-        {
-            return await _context.SaveChangesAsync();
-        }
+        public IMovieRepository Movies { get; }
+        public IUserRepository Users { get; }
+        public IGenericRepository<Rental> Rentals { get; }
+        public IGenericRepository<Review> Reviews { get; }
+        public IGenericRepository<RentalPricing> RentalPricings { get; }
 
+        public async Task<int> CompleteAsync() => await _context.SaveChangesAsync();
+      
         public void Dispose()
         {
-            _context.Dispose();
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!_disposed)
+            {
+                if (disposing)
+                {
+                    _context.Dispose();
+                }
+                _disposed = true;
+            }
         }
     }
 }

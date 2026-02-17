@@ -18,7 +18,6 @@ namespace FilmKirala.Application.Validators
             RuleFor(x => x.Password)
                 .NotEmpty().WithMessage("Şifre boş olamaz.")
                 .MinimumLength(6).WithMessage("Şifre en az 6 karakter olmalı.")
-             //   .Matches("[A-Z]").WithMessage("Şifre en az bir büyük harf içermeli.") test ederken ömrümü çürüttü bu satır aq
                 .Matches("[0-9]").WithMessage("Şifre en az bir rakam içermeli.");
         }
     }
@@ -35,12 +34,16 @@ namespace FilmKirala.Application.Validators
                 .NotEmpty().WithMessage("Şifre gereklidir.");
         }
     }
+
     public class RefreshTokenRequestDtoValidator : AbstractValidator<RefreshTokenRequestDto>
     {
         public RefreshTokenRequestDtoValidator()
         {
-            RuleFor(x => x.AccessToken).NotEmpty().WithMessage("Access Token gereklidir.");
-            RuleFor(x => x.RefreshToken).NotEmpty().WithMessage("Refresh Token gereklidir.");
+            RuleFor(x => x.AccessToken)
+                .NotEmpty().WithMessage("Access Token gereklidir.");
+
+            RuleFor(x => x.RefreshToken)
+                .NotEmpty().WithMessage("Refresh Token gereklidir.");
         }
     }
 }

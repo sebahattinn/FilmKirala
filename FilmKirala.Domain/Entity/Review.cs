@@ -14,7 +14,7 @@ namespace FilmKirala.Domain.Entity
 
 
         public Rating Rating { get; private set; }
-        public string Comment { get; private set; }
+        public string Comment { get; private set; } = null!;
         public DateTime CreatedAt { get; private set; }
 
         private Review() { }  //bu boş constractor EF için bu olmayınca mal oluyo
