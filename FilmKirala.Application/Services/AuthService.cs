@@ -12,21 +12,12 @@ using System.Text;
 
 namespace FilmKirala.Application.Services
 {
-    public class AuthService : IAuthService
+    public class AuthService(IUnitOfWork unitOfWork, IConfiguration configuration, ICacheService cacheService) : IAuthService
     {
-        private readonly IUnitOfWork _unitOfWork;
-        private readonly IConfiguration _configuration;
-
-        public AuthService(IUnitOfWork unitOfWork, IConfiguration configuration)
-        {
-            _unitOfWork = unitOfWork;
-            _configuration = configuration;
-        }
-
         public async Task<AuthResponseDto> RegisterAsync(RegisterRequestDto request)
         {
-            if (await _unitOfWork.Users.GetByEmailAsync(request.Email) != null)
-                throw new Exception("Bu email zaten kayıtlı.");
+            if (await unitOfWork.Users.GetByEmailAsync(request.Email) != null)
+                throw new InvalidOperationException("Bu email zaten kayıtlı.");
 
             CreatePasswordHash(request.Password, out byte[] passwordHash, out byte[] passwordSalt);
 
@@ -39,141 +30,92 @@ namespace FilmKirala.Application.Services
                 Roles.User
             );
 
-            var refreshToken = GenerateRefreshToken();
-            user.UpdateRefreshToken(refreshToken, DateTime.UtcNow.AddDays(2)); // 2 gün geçerli
+            user.AddRefreshToken(GenerateRefreshToken(), DateTime.UtcNow.AddDays(7));
 
-            await _unitOfWork.Users.AddAsync(user);
-            await _unitOfWork.CompleteAsync();
+            await unitOfWork.Users.AddAsync(user);
+            await unitOfWork.CompleteAsync();
 
-            string accessToken = CreateToken(user);
-
-            return new AuthResponseDto(user.Id, user.Username, user.Email, accessToken, user.RefreshToken, user.Roles.ToString(), user.WalletBalance);
+            return new AuthResponseDto(user.Id, user.Username, user.Email, CreateToken(user),
+                user.RefreshTokens.Last().Token, user.Roles.ToString(), user.WalletBalance);
         }
 
         public async Task<AuthResponseDto> LoginAsync(LoginRequestDto request)
         {
-            var user = await _unitOfWork.Users.GetByEmailAsync(request.Email);
-            if (user == null) throw new Exception("Kullanıcı bulunamadı.");
+            var user = await unitOfWork.Users.GetByEmailAsync(request.Email);
+            if (user == null) throw new UnauthorizedAccessException("E-posta veya şifre hatalı.");
 
             if (!VerifyPasswordHash(request.Password, Convert.FromBase64String(user.PasswordHash), Convert.FromBase64String(user.PasswordSalt)))
-                throw new Exception("Şifre yanlış.");
+                throw new UnauthorizedAccessException("E-posta veya şifre hatalı.");
 
             var refreshToken = GenerateRefreshToken();
-            user.UpdateRefreshToken(refreshToken, DateTime.UtcNow.AddDays(7));
-            await _unitOfWork.CompleteAsync();
+            user.AddRefreshToken(refreshToken, DateTime.UtcNow.AddDays(7));
+            await unitOfWork.CompleteAsync();
 
-            string accessToken = CreateToken(user);
+            string cacheKey = $"user_profile_{user.Id}";                           //kullanıcı profil bilgilerini cachle
+            await cacheService.SetAsync(cacheKey, user, TimeSpan.FromHours(1)); //password hash
 
-            return new AuthResponseDto(user.Id, user.Username, user.Email, accessToken, user.RefreshToken, user.Roles.ToString(), user.WalletBalance);
+            return new AuthResponseDto(user.Id, user.Username, user.Email, CreateToken(user),
+                refreshToken, user.Roles.ToString(), user.WalletBalance);
         }
-        public async Task<AuthResponseDto> RefreshTokenAsync(RefreshTokenRequestDto request)
+
+        public async Task UpdateUserBalanceAsync(string email, int newBalance)
         {
+            var user = await unitOfWork.Users.GetByEmailAsync(email);
+            if (user == null) throw new KeyNotFoundException($"Kullanıcı bulunamadı: {email}");
 
-            var principal = GetPrincipalFromExpiredToken(request.AccessToken);
-            if (principal == null) throw new Exception("Geçersiz Token (Principal oluşturulamadı)"); //Süresi bitmiş Access Token'dan User Id'yi çıkart
-
-            var userIdStr = principal.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-
-
-            if (string.IsNullOrEmpty(userIdStr) || !int.TryParse(userIdStr, out int userId)) //parse ile token kontroplü
-            {
-                throw new Exception("Token içinde geçerli bir Kullanıcı ID'si bulunamadı!");
-            }
-
-
-            var user = await _unitOfWork.Users.GetByIdAsync(userId);
-
-            if (user == null || user.RefreshTokenExpiryTime <= DateTime.UtcNow)
-            {
-                throw new Exception("Oturum süreniz dolmuş veya kullanıcı bulunamadı. Lütfen tekrar giriş yapın.");
-            }
-
-            if (user.RefreshToken != request.RefreshToken)
-            {
-                user.UpdateRefreshToken(null, DateTime.UtcNow); // Token'ı öldür yani Revoke
-                await _unitOfWork.CompleteAsync();
-                throw new Exception("Güvenlik Uyarısı: Eski bir token kullanıldı! Hesabınız güvenliği için oturum kapatıldı.");
-            }
-
-            var newAccessToken = CreateToken(user);
-            var newRefreshToken = GenerateRefreshToken();
-
-            user.UpdateRefreshToken(newRefreshToken, DateTime.UtcNow.AddDays(7));
-            await _unitOfWork.CompleteAsync();
-
-            return new AuthResponseDto(user.Id, user.Username, user.Email, newAccessToken, newRefreshToken, user.Roles.ToString(), user.WalletBalance);
+            user.UpdateBalance(newBalance);
+            await unitOfWork.CompleteAsync();
+            await cacheService.RemoveAsync($"user_profile_{user.Id}");
         }
 
-        private void CreatePasswordHash(string password, out byte[] passwordHash, out byte[] passwordSalt)
+        private static void CreatePasswordHash(string password, out byte[] passwordHash, out byte[] passwordSalt)
         {
-            using (var hmac = new HMACSHA512())
-            {
-                passwordSalt = hmac.Key;
-                passwordHash = hmac.ComputeHash(Encoding.UTF8.GetBytes(password));
-            }
+            using var hmac = new HMACSHA512();
+            passwordSalt = hmac.Key;
+            passwordHash = hmac.ComputeHash(Encoding.UTF8.GetBytes(password));
         }
 
-        private bool VerifyPasswordHash(string password, byte[] storedHash, byte[] storedSalt)
+        private static bool VerifyPasswordHash(string password, byte[] storedHash, byte[] storedSalt)
         {
-            using (var hmac = new HMACSHA512(storedSalt))
-            {
-                var computedHash = hmac.ComputeHash(Encoding.UTF8.GetBytes(password));
-                return computedHash.SequenceEqual(storedHash);
-            }
+            using var hmac = new HMACSHA512(storedSalt);
+            return hmac.ComputeHash(Encoding.UTF8.GetBytes(password)).SequenceEqual(storedHash);
         }
+
         private string CreateToken(User user)
         {
             var claims = new List<Claim>
             {
-                new Claim(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
+                new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
+                new Claim(ClaimTypes.Email, user.Email),
                 new Claim(ClaimTypes.Role, user.Roles.ToString())
             };
 
-            var keyString = _configuration.GetSection("JwtSettings:Key").Value;
-
-            if (string.IsNullOrEmpty(keyString))
-                throw new Exception("JwtSettings:Key değeri appsettings.json dosyasından okunamadı");
-
-            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(keyString));
+            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(configuration["JwtSettings:Key"]!));
             var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha512Signature);
 
             var token = new JwtSecurityToken(
-                issuer: _configuration["JwtSettings:Issuer"],
-                audience: _configuration["JwtSettings:Audience"],
-                claims: claims,
-                expires: DateTime.UtcNow.AddMinutes(15), // Access Token ömrü 15dk
+                configuration["JwtSettings:Issuer"],
+                configuration["JwtSettings:Audience"],
+                claims,
+                expires: DateTime.UtcNow.AddMinutes(15),
                 signingCredentials: creds
             );
 
             return new JwtSecurityTokenHandler().WriteToken(token);
         }
 
-        private string GenerateRefreshToken()
+        private static string GenerateRefreshToken()
         {
             var randomNumber = new byte[64];
             using var rng = RandomNumberGenerator.Create();
             rng.GetBytes(randomNumber);
             return Convert.ToBase64String(randomNumber);
         }
-        private ClaimsPrincipal? GetPrincipalFromExpiredToken(string? token)
+
+        public async Task<AuthResponseDto> RefreshTokenAsync(RefreshTokenRequestDto request)
         {
-            var keyString = _configuration.GetSection("JwtSettings:Key").Value;
-            var tokenValidationParameters = new TokenValidationParameters
-            {
-                ValidateAudience = false,
-                ValidateIssuer = false,
-                ValidateIssuerSigningKey = true,
-                IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(keyString!)),
-                ValidateLifetime = false
-            };
-
-            var tokenHandler = new JwtSecurityTokenHandler();
-            var principal = tokenHandler.ValidateToken(token, tokenValidationParameters, out SecurityToken securityToken);
-
-            if (securityToken is not JwtSecurityToken jwtSecurityToken || !jwtSecurityToken.Header.Alg.Equals(SecurityAlgorithms.HmacSha512, StringComparison.InvariantCultureIgnoreCase))
-                throw new SecurityTokenException("Invalid token");
-
-            return principal;
+            await Task.CompletedTask;
+            throw new NotImplementedException();
         }
     }
 }

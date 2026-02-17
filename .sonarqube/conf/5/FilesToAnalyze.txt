@@ -1,0 +1,16 @@
+﻿C:\Users\sebahattin\Desktop\Dengeage\3.Hafta\FilmKirala\FilmKirala\FilmKirala.Notification.Api\Consumers\FilmRentedConsumer.cs
+C:\Users\sebahattin\Desktop\Dengeage\3.Hafta\FilmKirala\FilmKirala\FilmKirala.Notification.Api\Data\NotificationAppDbContext.cs
+C:\Users\sebahattin\Desktop\Dengeage\3.Hafta\FilmKirala\FilmKirala\FilmKirala.Notification.Api\Data\NotificationDbContextFactory.cs
+C:\Users\sebahattin\Desktop\Dengeage\3.Hafta\FilmKirala\FilmKirala\FilmKirala.Notification.Api\Entities\NotificationLog.cs
+C:\Users\sebahattin\Desktop\Dengeage\3.Hafta\FilmKirala\FilmKirala\FilmKirala.Notification.Api\Migrations\20260210063808_InitialCreate.cs
+C:\Users\sebahattin\Desktop\Dengeage\3.Hafta\FilmKirala\FilmKirala\FilmKirala.Notification.Api\Migrations\20260210063808_InitialCreate.Designer.cs
+C:\Users\sebahattin\Desktop\Dengeage\3.Hafta\FilmKirala\FilmKirala\FilmKirala.Notification.Api\Migrations\NotificationAppDbContextModelSnapshot.cs
+C:\Users\sebahattin\Desktop\Dengeage\3.Hafta\FilmKirala\FilmKirala\FilmKirala.Notification.Api\Program.cs
+C:\Users\sebahattin\Desktop\Dengeage\3.Hafta\FilmKirala\FilmKirala\FilmKirala.Notification.Api\obj\Debug\net9.0\FilmKirala.Notification.Api.GlobalUsings.g.cs
+C:\Users\sebahattin\Desktop\Dengeage\3.Hafta\FilmKirala\FilmKirala\FilmKirala.Notification.Api\obj\Debug\net9.0\.NETCoreApp,Version=v9.0.AssemblyAttributes.cs
+C:\Users\sebahattin\Desktop\Dengeage\3.Hafta\FilmKirala\FilmKirala\FilmKirala.Notification.Api\obj\Debug\net9.0\FilmKirala.Notification.Api.AssemblyInfo.cs
+C:\Users\sebahattin\Desktop\Dengeage\3.Hafta\FilmKirala\FilmKirala\FilmKirala.Notification.Api\obj\Debug\net9.0\FilmKirala.Notification.Api.MvcApplicationPartsAssemblyInfo.cs
+C:\Users\sebahattin\Desktop\Dengeage\3.Hafta\FilmKirala\FilmKirala\FilmKirala.Notification.Api\appsettings.Development.json
+C:\Users\sebahattin\Desktop\Dengeage\3.Hafta\FilmKirala\FilmKirala\FilmKirala.Notification.Api\appsettings.json
+C:\Users\sebahattin\Desktop\Dengeage\3.Hafta\FilmKirala\FilmKirala\FilmKirala.Notification.Api\FilmKirala.Notification.Api.http
+C:\Users\sebahattin\Desktop\Dengeage\3.Hafta\FilmKirala\FilmKirala\FilmKirala.Notification.Api\Properties\launchSettings.json

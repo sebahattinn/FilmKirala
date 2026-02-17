@@ -26,7 +26,8 @@ namespace FilmKirala.Domain.Entity
         {
             if (totalPrice <= 0)
             {
-                throw new Exception("Bedavaya film olmaz ab");
+               
+                throw new InvalidOperationException("Bedavaya film olmaz ab");
             }
 
             // İlişkileri kuruyorum

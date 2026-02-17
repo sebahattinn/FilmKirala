@@ -7,9 +7,9 @@ namespace FilmKirala.Application.Interfaces
     {
         IMovieRepository Movies { get; }
         IUserRepository Users { get; }
-        IGenericRepository<Rental> Rentals { get; } 
+        IGenericRepository<Rental> Rentals { get; }
         IGenericRepository<Review> Reviews { get; }
         IGenericRepository<RentalPricing> RentalPricings { get; }
-        Task<int> CompleteAsync();  // Veritabanına kaydetme metodu teamplate'i
+        Task<int> CompleteAsync(); //  DB'ye kaydetme teamplate'i
     }
 }

@@ -1,0 +1,1 @@
+çRwC:\Users\sebahattin\Desktop\Dengeage\3.Hafta\FilmKirala\FilmKirala\FilmKirala.Application\FilmKirala.Application.csproj¢net9.0ÚCSharp13

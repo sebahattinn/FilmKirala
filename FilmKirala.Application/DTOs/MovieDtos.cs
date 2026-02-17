@@ -1,54 +1,60 @@
 ﻿using FilmKirala.Domain.Enums;
+using MessagePack;
 
 namespace FilmKirala.Application.DTOs
 {
+    [MessagePackObject]
     public record CreateMovieDto
     {
-        public string Title { get; init; }
-        public string Description { get; init; }
-        public string Genre { get; init; }
-        public int Stock { get; init; }
-        // Liste boş gelirse patlamasın diye new kullandım
-        public List<PricingDto> Pricings { get; init; } = new();
+        [Key(0)] public required string Title { get; init; }
+        [Key(1)] public required string Description { get; init; }
+        [Key(2)] public required string Genre { get; init; }
+        [Key(3)] public int Stock { get; init; }
+
+        [Key(4)] public List<PricingDto> Pricings { get; set; } = [];
     }
 
+    [MessagePackObject]
     public record UpdateMovieDto
     {
-        public int Id { get; init; }
-        public string Title { get; init; }
-        public string Description { get; init; }
-        public string Genre { get; init; }
-        public int Stock { get; init; }
-        public bool IsActive { get; init; }
+        [Key(0)] public int Id { get; init; }
+        [Key(1)] public required string Title { get; init; }
+        [Key(2)] public required string Description { get; init; }
+        [Key(3)] public required string Genre { get; init; }
+        [Key(4)] public int Stock { get; init; }
+        [Key(5)] public bool IsActive { get; init; }
     }
 
+    [MessagePackObject]
     public record PricingDto
     {
-        public DurationType DurationType { get; init; }
-        public int DurationValue { get; init; }
-        public int Price { get; init; }
+        [Key(0)] public DurationType DurationType { get; init; }
+        [Key(1)] public int DurationValue { get; init; }
+        [Key(2)] public int Price { get; init; }
     }
 
+    [MessagePackObject]
     public record MovieListDto
     {
-        public int Id { get; init; }
-        public string Title { get; init; }
-        public string Genre { get; init; }
-        public bool IsStockAvailable { get; init; }
-        public decimal MinPrice { get; init; }
+        [Key(0)] public int Id { get; init; }
+        [Key(1)] public required string Title { get; init; }
+        [Key(2)] public required string Genre { get; init; }
+        [Key(3)] public bool IsStockAvailable { get; init; }
+        [Key(4)] public double MinPrice { get; init; }
     }
 
+    [MessagePackObject]
     public record MovieDetailDto
     {
-        public int Id { get; init; }
-        public string Title { get; init; }
-        public string Description { get; init; }
-        public string Genre { get; init; }
-        public int Stock { get; init; }
-        public bool IsActive { get; init; }
-        public List<PricingDto> RentalOptions { get; init; } = new();
-        public List<ReviewDto> Reviews { get; init; } = new();
+        [Key(0)] public int Id { get; init; }
+        [Key(1)] public required string Title { get; init; }
+        [Key(2)] public required string Description { get; init; }
+        [Key(3)] public required string Genre { get; init; }
+        [Key(4)] public int Stock { get; init; }
+        [Key(5)] public bool IsActive { get; init; }
 
-        public double AverageRating { get; init; }
+        [Key(6)] public List<PricingDto> RentalOptions { get; set; } = [];
+        [Key(7)] public List<ReviewDto> Reviews { get; set; } = [];
+        [Key(8)] public double AverageRating { get; set; }
     }
 }

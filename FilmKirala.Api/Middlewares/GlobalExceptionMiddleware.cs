@@ -1,5 +1,6 @@
 ﻿using System.Net;
 using System.Text.Json;
+using Serilog;
 
 namespace FilmKirala.Api.Middlewares
 {
@@ -11,27 +12,28 @@ namespace FilmKirala.Api.Middlewares
         {
             _next = next;
         }
-
         public async Task InvokeAsync(HttpContext context)
         {
             try
             {
-                // İstek normal yolunda devam etsin
                 await _next(context);
-            }
-            catch (KeyNotFoundException ex)
-            {
-                // Eğer "Bulunamadı" hatası gelirse burası yakalar (404)
-                await HandleExceptionAsync(context, ex, (int)HttpStatusCode.NotFound);
             }
             catch (Exception ex)
             {
-                // Başka herhangi bir hata gelirse burası yakalar (500)
-                // Loglama (Serilog) buraya eklenebilir.
-                await HandleExceptionAsync(context, ex, (int)HttpStatusCode.InternalServerError);
+                // Loglama burada merkezileşir
+                Log.Error(ex, "Bir hata oluştu: {Message}", ex.Message);
+
+                var statusCode = ex switch
+                {
+                    KeyNotFoundException => (int)HttpStatusCode.NotFound,
+                    UnauthorizedAccessException => (int)HttpStatusCode.Unauthorized,
+                    InvalidOperationException => (int)HttpStatusCode.BadRequest,
+                    _ => (int)HttpStatusCode.InternalServerError
+                };
+
+                await HandleExceptionAsync(context, ex, statusCode);
             }
         }
-
         private static Task HandleExceptionAsync(HttpContext context, Exception exception, int statusCode)
         {
             context.Response.ContentType = "application/json";
@@ -41,9 +43,8 @@ namespace FilmKirala.Api.Middlewares
             {
                 StatusCode = statusCode,
                 Message = exception.Message,
-                // İstersen buraya "Detail" veya "Timestamp" de ekleyebilirsin
+                // buraya "Detail" veya "Timestamp" de eklenebilir.
             };
-
             return context.Response.WriteAsJsonAsync(response);
         }
     }

@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ProjectInfo xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns="http://www.sonarsource.com/msbuild/integration/2015/1">
+  <ProjectName>FilmKirala.Application</ProjectName>
+  <ProjectLanguage>C#</ProjectLanguage>
+  <ProjectType>Product</ProjectType>
+  <ProjectGuid>75d48a57-46f2-48ce-b57a-4e2e8c108f2a</ProjectGuid>
+  <FullPath>C:\Users\sebahattin\Desktop\Dengeage\3.Hafta\FilmKirala\FilmKirala\FilmKirala.Application\FilmKirala.Application.csproj</FullPath>
+  <IsExcluded>false</IsExcluded>
+  <AnalysisResultFiles>
+    <AnalysisResultFile Id="FilesToAnalyze" Location="C:\Users\sebahattin\Desktop\Dengeage\3.Hafta\FilmKirala\FilmKirala\.sonarqube\conf\9\FilesToAnalyze.txt" />
+  </AnalysisResultFiles>
+  <AnalysisSettings>
+    <Property Name="sonar.cs.roslyn.reportFilePaths">C:\Users\sebahattin\Desktop\Dengeage\3.Hafta\FilmKirala\FilmKirala\.sonarqube\out\9\Issues.json</Property>
+    <Property Name="sonar.cs.analyzer.projectOutPaths">C:\Users\sebahattin\Desktop\Dengeage\3.Hafta\FilmKirala\FilmKirala\.sonarqube\out\9</Property>
+    <Property Name="sonar.cs.scanner.telemetry">C:\Users\sebahattin\Desktop\Dengeage\3.Hafta\FilmKirala\FilmKirala\.sonarqube\out\9\Telemetry.json</Property>
+  </AnalysisSettings>
+  <Configuration>Debug</Configuration>
+  <Platform>AnyCPU</Platform>
+  <TargetFramework>net9.0</TargetFramework>
+</ProjectInfo>

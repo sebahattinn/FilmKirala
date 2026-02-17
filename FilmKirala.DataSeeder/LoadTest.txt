@@ -1,0 +1,33 @@
+﻿// Gerekli usingleri ekle
+using System.Diagnostics;
+
+Console.WriteLine("🔥 SALDIRI BAŞLIYOR... (Redis & RabbitMQ Testi)");
+
+var httpClient = new HttpClient();
+string apiUrl = "https://localhost:7022/movie-api/api/Movies"; // Gateway URL'si
+
+// Aynı anda 500 kişi siteye girmiş gibi yapıyoruz
+int concurrentUsers = 500; 
+int totalRequests = 10000; // Toplam 10 bin istek (Şimdilik)
+
+var sw = Stopwatch.StartNew();
+
+// PARALEL SORGU (Bunu sormuştu abi)
+Parallel.For(0, totalRequests, new ParallelOptions { MaxDegreeOfParallelism = concurrentUsers }, (i) =>
+{
+    try
+    {
+        // 1. Filmleri Listele (Redis Cache Testi)
+        var response = httpClient.GetAsync(apiUrl).Result;
+        
+        // Eğer Redis çalışıyorsa bu işlem milisaniyeler sürmeli.
+        // Eğer Redis kapalıysa veya kod bozuksa SQL Server kitlenir.
+    }
+    catch
+    {
+        // Hata olursa (Gateway çökerse) buraya düşer
+    }
+});
+
+sw.Stop();
+Console.WriteLine($"\n🏁 Test Bitti! Geçen Süre: {sw.ElapsedMilliseconds} ms");
