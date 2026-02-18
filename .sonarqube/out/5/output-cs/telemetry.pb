@@ -1,1 +1,0 @@
-òRÅC:\Users\sebahattin\Desktop\Dengeage\3.Hafta\FilmKirala\FilmKirala\FilmKirala.Notification.Api\FilmKirala.Notification.Api.csproj¢net9.0ÚCSharp13

@@ -1,1 +1,0 @@
-“R}C:\Users\sebahattin\Desktop\Dengeage\3.Hafta\FilmKirala\FilmKirala\FilmKirala.Infrastructure\FilmKirala.Infrastructure.csproj¢net9.0òCSharp13

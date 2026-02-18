@@ -1,1 +1,0 @@
-ƒRmC:\Users\sebahattin\Desktop\Dengeage\3.Hafta\FilmKirala\FilmKirala\FilmKirala.Domain\FilmKirala.Domain.csproj¢net9.0òCSharp13
