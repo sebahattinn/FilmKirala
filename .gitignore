@@ -1,39 +1,136 @@
-## --- ÖNEMLİ: GÜVENLİK VE AYAR DOSYALARI ---
-# Tüm projelerdeki appsettings dosyaları (Prod şifreleri ve JWT Key'ler burada!)
-**/appsettings.json
-**/appsettings.Development.json
-**/appsettings.Production.json
+############################################################
+## --- GÜVENLİK: SECRET & CONFIG DOSYALARI ---
+############################################################
 
-# Yerel çalıştırma ayarları (Kişisel portlar ve IIS ayarları)
+# App settings (JWT, ConnectionString vs)
+**/appsettings.json
+**/appsettings.*.json
+
+# Launch / Local IIS settings
 **/Properties/launchSettings.json
 
-## --- DERLEME VE ÇIKTI DOSYALARI ---
+# .NET user secrets
+**/secrets.json
+**/.secrets/
+**/UserSecrets/
+
+# Environment files
+.env
+.env.*
+*.env
+
+# Sertifika ve anahtar dosyaları
+*.pfx
+*.p12
+*.snk
+*.key
+*.pem
+*.crt
+
+############################################################
+## --- BUILD OUTPUT ---
+############################################################
+
 [Bb]in/
 [Oo]bj/
+Debug/
+Release/
+x64/
+x86/
+publish/
+out/
+
 *.exe
 *.dll
 *.pdb
+*.cache
+*.ilk
+*.obj
+*.log
 
-## --- VISUAL STUDIO VE IDE DOSYALARI ---
+############################################################
+## --- TEST & COVERAGE ---
+############################################################
+
+TestResults/
+*.trx
+*.coverage
+*.coveragexml
+coverage/
+.opencover/
+
+############################################################
+## --- IDE / EDITOR ---
+############################################################
+
 .vs/
 *.user
 *.userosscache
 *.sln.docstates
 
-# VS Code ve JetBrains Rider
+# VS Code
 .vscode/
-.idea/
-*.swp
 
-## --- NUGET VE PAKET YÖNETİMİ ---
+# JetBrains Rider
+.idea/
+
+# Swap / temp
+*.swp
+*.tmp
+*.temp
+
+############################################################
+## --- PACKAGE MANAGEMENT ---
+############################################################
+
 *.nupkg
 **/packages/
 **/node_modules/
 project.lock.json
 project.fragment.lock.json
+.nuget/
 
-## --- VERİTABANI VE LOG DOSYALARI ---
+############################################################
+## --- DATABASE & LOG FILES ---
+############################################################
+
 *.db
 *.sqlite
+*.sqlite3
+*.mdf
+*.ldf
 *.log
+logs/
 **/NotificationLogs/
+
+############################################################
+## --- DOCKER ---
+############################################################
+
+docker-compose.override.yml
+docker-data/
+*.tar
+
+############################################################
+## --- SONARQUBE ---
+############################################################
+
+.sonarqube/
+**/.sonarqube/
+
+############################################################
+## --- GRAYLOG / ELASTIC / MONGO DATA ---
+############################################################
+
+graylog-data/
+mongo-data/
+elasticsearch-data/
+
+############################################################
+## --- OS FILES ---
+############################################################
+
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini

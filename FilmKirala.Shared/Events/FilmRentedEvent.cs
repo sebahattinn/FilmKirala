@@ -1,6 +1,6 @@
 ﻿namespace FilmKirala.Shared.Events
 {
- 
+   
     public record FilmRentedEvent
     {
         public required string Email { get; init; }

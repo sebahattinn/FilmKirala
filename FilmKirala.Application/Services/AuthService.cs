@@ -51,8 +51,11 @@ namespace FilmKirala.Application.Services
             user.AddRefreshToken(refreshToken, DateTime.UtcNow.AddDays(7));
             await unitOfWork.CompleteAsync();
 
-            string cacheKey = $"user_profile_{user.Id}";                           //kullanıcı profil bilgilerini cachle
-            await cacheService.SetAsync(cacheKey, user, TimeSpan.FromHours(1)); //password hash
+          //  string cacheKey = $"user_profile_{user.Id}";                          
+          //  await cacheService.SetAsync(cacheKey, user, TimeSpan.FromHours(1));      direkt user atmak yerine DTO gönderimi sağlıyoruz.
+            string cacheKey = $"user_profile_{user.Id}";
+            var cacheData = new UserCacheDtos(user.Id, user.Username, user.Email, user.WalletBalance, user.Roles.ToString());
+            await cacheService.SetAsync(cacheKey, cacheData, TimeSpan.FromHours(1));
 
             return new AuthResponseDto(user.Id, user.Username, user.Email, CreateToken(user),
                 refreshToken, user.Roles.ToString(), user.WalletBalance);

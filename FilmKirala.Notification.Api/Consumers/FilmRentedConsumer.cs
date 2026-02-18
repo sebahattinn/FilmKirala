@@ -1,66 +1,47 @@
 ﻿using FilmKirala.Notification.Api.Data;
-using Microsoft.EntityFrameworkCore;
+using FilmKirala.Notification.Api.Entities;
+using FilmKirala.Shared.Events;
 using MassTransit;
-using FilmKirala.Notification.Api.Consumers;
 
-var builder = WebApplication.CreateBuilder(args);
-builder.Services.AddControllers();
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
-
-
-builder.Services.AddDbContext<NotificationAppDbContext>(options =>
-
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));      // SQL Server Bağlantısı
-
-builder.Services.AddMassTransit(x =>
-
+namespace FilmKirala.Notification.Api.Consumers
 {
-    // Consumer Tanımı
-
-    x.AddConsumer<FilmRentedConsumer>();
-    x.UsingRabbitMq((context, cfg) =>
+    public class FilmRentedConsumer : IConsumer<FilmRentedEvent>
     {
-        cfg.Host("localhost", "/", h =>
+        private readonly NotificationAppDbContext _context;
+        private readonly ILogger<FilmRentedConsumer> _logger;
+
+        public FilmRentedConsumer(NotificationAppDbContext context, ILogger<FilmRentedConsumer> logger)
         {
-            h.Username("guest");
+            _context = context;
+            _logger = logger;
+        }
 
-            h.Password("guest");
-
-        });
-        //  ANA KUYRUK YAPILANDIRMASI (MAIN QUEUE)
-        cfg.ReceiveEndpoint("film_kiralama_kuyruğu", e =>
-
+        public async Task Consume(ConsumeContext<FilmRentedEvent> context)
         {
-            // RETRY: Hata durumunda 3 kez yerinde dene.
-            e.UseMessageRetry(r => r.Interval(3, TimeSpan.FromSeconds(5)));
-            e.SetQueueArgument("x-dead-letter-exchange", "film-rented-dlx");
-            e.SetQueueArgument("x-dead-letter-routing-key", "film-rented-dead-letter-key");  //DLX konfigürasyonları
-            e.ConfigureConsumer<FilmRentedConsumer>(context);      // Consumer'ı bağla
-        });
-        cfg.ReceiveEndpoint("film_kiralama_dead_letter_kuyruğu", e =>        //DLQ yapılandırması işlenen veya hataya düşen mesajalr buraya
+            var message = context.Message;
+            _logger.LogInformation(" Kiralama bildirimi işleniyor: {Email}", message.Email);
 
-        {
-            e.Bind("film-rented-dlx", s =>
+            try
             {
-                s.RoutingKey = "film-rented-dead-letter-key";
-                s.ExchangeType = "direct";
-            });
+                var notificationLog = new NotificationLog
+                {
+                    UserEmail = message.Email,
+                    Subject = message.Subject,
+                    Message = message.Message,
+                    SentAt = DateTime.UtcNow,
+                    IsSuccess = true
+                };
 
-        });
+                await _context.NotificationLogs.AddAsync(notificationLog);
+                await _context.SaveChangesAsync();
 
-    });
-
-});
-var app = builder.Build();
-if (app.Environment.IsDevelopment())
-
-{
-    app.UseSwagger();
-    app.UseSwaggerUI();
+                _logger.LogInformation(" Bildirim başarıyla kaydedildi: {Email}", message.Email);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, " Bildirim kaydedilirken hata oluştu: {Email}", message.Email);
+                throw;
+            }
+        }
+    }
 }
-
-app.UseHttpsRedirection();
-app.UseAuthorization();
-app.MapControllers();
-await app.RunAsync();

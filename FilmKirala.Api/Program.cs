@@ -87,14 +87,14 @@ builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IMovieService, MovieService>();
 builder.Services.AddScoped<IRentalService, RentalService>();
 builder.Services.AddScoped<IReviewService, ReviewService>();
-builder.Services.AddScoped<ICacheService, CacheService>(); 
-builder.Services.AddScoped<IBusService, BusService>();     
+builder.Services.AddScoped<ICacheService, CacheService>();
+builder.Services.AddScoped<IBusService, BusService>();
 
 builder.Services.AddAutoMapper(typeof(MappingProfile).Assembly);
 builder.Services.AddFluentValidationAutoValidation();
 builder.Services.AddValidatorsFromAssemblyContaining<MappingProfile>();
 
-// MassTransit ve RabbitMQ
+// 🚀 MassTransit ve RabbitMQ (Producer Yapılandırması)
 builder.Services.AddMassTransit(x =>
 {
     x.UsingRabbitMq((context, cfg) =>
@@ -148,7 +148,7 @@ builder.Services.AddSwaggerGen(options =>
             {
                 Reference = new OpenApiReference { Type = ReferenceType.SecurityScheme, Id = "Bearer" }
             },
-            Array.Empty<string>() 
+            Array.Empty<string>()
         }
     });
 });
