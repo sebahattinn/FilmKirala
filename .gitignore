@@ -5,6 +5,12 @@
 # App settings (JWT, ConnectionString vs)
 **/appsettings.json
 **/appsettings.*.json
+**/appsettings.Development.json
+**/appsettings.Local.json
+
+# Report.Api özel
+FilmKirala.Report.Api/appsettings*.json
+FilmKirala.Report.Api/Properties/launchSettings.json
 
 # Launch / Local IIS settings
 **/Properties/launchSettings.json
@@ -39,6 +45,7 @@ x64/
 x86/
 publish/
 out/
+artifacts/
 
 *.exe
 *.dll
@@ -101,7 +108,26 @@ project.fragment.lock.json
 *.ldf
 *.log
 logs/
+
+# Notification log klasörleri
 **/NotificationLogs/
+
+############################################################
+## --- REPORT / EXPORT DOSYALARI ---
+############################################################
+
+**/exports/
+**/reports/
+*.pdf
+*.xlsx
+*.csv
+
+############################################################
+## --- SWAGGER / TEMP ---
+############################################################
+
+**/swagger.json
+**/hangfire-data/
 
 ############################################################
 ## --- DOCKER ---
@@ -125,6 +151,13 @@ docker-data/
 graylog-data/
 mongo-data/
 elasticsearch-data/
+
+############################################################
+## --- CI / PIPELINE ---
+############################################################
+
+artifacts/
+*.coverage
 
 ############################################################
 ## --- OS FILES ---
