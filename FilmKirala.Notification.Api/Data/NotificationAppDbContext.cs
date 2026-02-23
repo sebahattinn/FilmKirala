@@ -1,15 +1,13 @@
-﻿using FilmKirala.Notification.Api.Entities;
+﻿using FilmKirala.Domain.Entity; // Ortak Domain sınıfımız
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
 
 namespace FilmKirala.Notification.Api.Data
 {
     public class NotificationAppDbContext : DbContext
     {
-        public NotificationAppDbContext(DbContextOptions<NotificationAppDbContext> options) : base(options)
-        {
-        }
+        public NotificationAppDbContext(DbContextOptions<NotificationAppDbContext> options) : base(options) { }
 
-        public DbSet<NotificationLog> NotificationLogs { get; set; }
+        // Sadece bu tabloyla ilgileniyoruz
+        public DbSet<NotificationLog> NotificationLogs => Set<NotificationLog>();
     }
 }

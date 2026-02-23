@@ -19,13 +19,13 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
-using Serilog;
+using Serilog;                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          
 using Serilog.Sinks.Graylog;
 
-var builder = WebApplication.CreateBuilder(args);
-
-// MessagePack Konfigürasyonu
-var mcOptions = MessagePackSerializerOptions.Standard
+var builder = WebApplication.CreateBuilder(args);                              
+                                                                               
+// MessagePack Konfigürasyonu                                                    
+var mcOptions = MessagePackSerializerOptions.Standard 
     .WithResolver(CompositeResolver.Create(
         NativeGuidResolver.Instance,
         NativeDecimalResolver.Instance,
@@ -44,7 +44,7 @@ Log.Logger = new LoggerConfiguration()
     {
         HostnameOrAddress = "localhost",
         Port = 12201,
-        TransportType = Serilog.Sinks.Graylog.Core.Transport.TransportType.Udp
+        TransportType = Serilog.Sinks.Graylog.Core.Transport.TransportType.Udp   
     })
     .CreateLogger();
 builder.Host.UseSerilog();
@@ -71,7 +71,7 @@ builder.Services.AddControllers(options =>
 {
     options.Filters.Add<ValidationFilter>();
 });
-
+ 
 // Veritabanı Bağlantısı
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlServer(configuration.GetConnectionString("DefaultConnection")));
@@ -94,7 +94,7 @@ builder.Services.AddAutoMapper(typeof(MappingProfile).Assembly);
 builder.Services.AddFluentValidationAutoValidation();
 builder.Services.AddValidatorsFromAssemblyContaining<MappingProfile>();
 
-// 🚀 MassTransit ve RabbitMQ (Producer Yapılandırması)
+//  MassTransit ve RabbitMQ (Producer Yapılandırması)
 builder.Services.AddMassTransit(x =>
 {
     x.UsingRabbitMq((context, cfg) =>
@@ -124,7 +124,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidAudience = jwtSection["Audience"],
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey))
         };
-    });
+    });                                  
 
 builder.Services.AddAuthorization();
 builder.Services.AddEndpointsApiExplorer();
