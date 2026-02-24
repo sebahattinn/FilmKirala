@@ -1,6 +1,5 @@
-﻿using FilmKirala.Infrastructure.Persistence;
+﻿using FilmKirala.Report.Api.Interfaces;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 
 namespace FilmKirala.Report.Api.Controllers
 {
@@ -8,46 +7,30 @@ namespace FilmKirala.Report.Api.Controllers
     [ApiController]
     public class MoviesReportController : ControllerBase
     {
-        private readonly AppDbContext _context;
+        private readonly IReportService _reportService;
 
-        public MoviesReportController(AppDbContext context)
+        public MoviesReportController(IReportService reportService)
         {
-            _context = context;
+            _reportService = reportService;
         }
 
         [HttpGet("summary")]
         public async Task<IActionResult> GetMovieSummary([FromQuery] int lastId = 0, [FromQuery] int pageSize = 10)
         {
+            var result = await _reportService.GetMovieSummaryAsync(lastId, pageSize);
+            return Ok(result);
+        }
 
-            var report = await _context.Movies
-                .AsNoTracking()
-                .OrderBy(m => m.Id) // Sıralama şart
-                .Where(m => m.Id > lastId) // Kaldığın yerden devam et
-                .Take(pageSize) // Sadece sayfa boyutu kadar getir
-                .Select(m => new
-                {
-                    m.Id,
-                    m.Title,
-                    m.Genre,
-                    m.Stock,
-                    // Index (IX_Rentals_MovieId) sayesinde bu sayma işlemi artık çok daha hızlı!
-                    RentalCount = _context.Rentals.Count(r => r.MovieId == m.Id)
-                })
-                .ToListAsync();
+        [HttpGet("export-excel")]
+        public async Task<IActionResult> ExportToExcel([FromQuery] int? lastId = null, [FromQuery] int? pageSize = null)
+        {
+            var stream = await _reportService.ExportMoviesToExcelAsync(lastId, pageSize);
 
-         
-            if (!report.Any())
-            {
-                return NotFound("Gösterilebilecek başka veri kalmadı.");
-            }
+        
+            string suffix = pageSize.HasValue ? $"_top{pageSize}" : "_all";
+            string fileName = $"Film_Raporu_{DateTime.Now:yyyyMMdd}{suffix}.xlsx";
 
-            return Ok(new
-            {
-                GeneratedAt = DateTime.Now,
-                Count = report.Count,
-                LastId = report.Last().Id, 
-                Data = report
-            });
+            return File(stream, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", fileName);
         }
     }
 }

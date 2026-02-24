@@ -1,4 +1,6 @@
 ﻿using FilmKirala.Infrastructure.Persistence;
+using FilmKirala.Report.Api.Interfaces;
+using FilmKirala.Report.Api.Services;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -11,6 +13,7 @@ builder.Services.AddDbContextPool<AppDbContext>(options =>
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+builder.Services.AddScoped<IReportService, ReportService>();
 
 var app = builder.Build();
 
