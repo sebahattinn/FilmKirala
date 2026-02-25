@@ -4,19 +4,26 @@ using FilmKirala.Report.Api.Interfaces;
 using Microsoft.EntityFrameworkCore;
 using MiniExcelLibs;
 using Hangfire;
+using System.Collections.Concurrent;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace FilmKirala.Report.Api.Services
 {
     public class ReportService : IReportService
     {
         private readonly AppDbContext _context;
+        private readonly IServiceScopeFactory _scopeFactory;
         private readonly string _exportPath;
 
-        public ReportService(AppDbContext context)
+        public ReportService(AppDbContext context, IServiceScopeFactory scopeFactory)
         {
             _context = context;
-           
-            _exportPath = Path.Combine(Directory.GetParent(Directory.GetCurrentDirectory()).FullName, "FilmKiralaExports");
+            _scopeFactory = scopeFactory;
+
+            var parentDir = Directory.GetParent(Directory.GetCurrentDirectory())?.FullName
+                           ?? Directory.GetCurrentDirectory();
+
+            _exportPath = Path.Combine(parentDir, "FilmKiralaExports");
         }
 
         public string EnqueueReport(bool isCsv)
@@ -26,44 +33,101 @@ namespace FilmKirala.Report.Api.Services
             return jobId;
         }
 
+        public async Task CreateLargeReportInBackgroundAsync(string jobId, bool isCsv)
+        {
+            if (!Directory.Exists(_exportPath)) Directory.CreateDirectory(_exportPath);
+
+            var fileName = $"Report_{jobId}.{(isCsv ? "csv" : "xlsx")}";
+            var fullPath = Path.Combine(_exportPath, fileName);
+
+            // Dosya çakışmasını önlemek için eğer varsa sil
+            if (File.Exists(fullPath)) File.Delete(fullPath);
+
+            int batchSize = 100000;
+            int lastProcessedId = 0;
+            bool hasMoreData = true;
+            var finalReportRows = new ConcurrentBag<object>();
+
+            // 🚀 BATCH + KEYSET PAGINATION DÖNGÜSÜ
+            while (hasMoreData)
+            {
+                using (var scope = _scopeFactory.CreateScope())
+                {
+                    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+                    // I/O Bound: Veritabanından hızlı atlama ile batch çek
+                    var moviesBatch = await db.Movies
+                        .AsNoTracking()
+                        .OrderBy(m => m.Id)
+                        .Where(m => m.Id > lastProcessedId)
+                        .Take(batchSize)
+                        .ToListAsync();
+
+                    if (moviesBatch.Count == 0) { hasMoreData = false; break; }
+
+                    // Rentals'ı da hafızaya alıp işlemciyi coşturacağız
+                    var rentals = await db.Rentals.AsNoTracking().ToListAsync();
+
+                    // 🔥 MULTI-THREADING ŞOV (CPU Bound): İşlemci çekirdekleri burada coşuyor!
+                    Parallel.ForEach(moviesBatch, new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount }, movie =>
+                    {
+                        // Konsolda thread takibi
+                        Console.WriteLine($"[LAST ID: {lastProcessedId}] [THREAD {Thread.CurrentThread.ManagedThreadId}] İşleniyor: {movie.Title}");
+
+                        var rentalCount = rentals.Count(r => r.MovieId == movie.Id);
+
+                        finalReportRows.Add(new
+                        {
+                            FilmId = movie.Id,
+                            FilmAdi = movie.Title,
+                            Tur = movie.Genre,
+                            KiralamaSayisi = rentalCount
+                        });
+                    });
+
+                    lastProcessedId = moviesBatch.Last().Id;
+                }
+            }
+
+            // Diske Yazma (İşlemci biter, disk başlar)
+            await MiniExcel.SaveAsAsync(fullPath, finalReportRows, excelType: isCsv ? ExcelType.CSV : ExcelType.XLSX);
+
+            // 🔔 BİLDİRİM (Şema hatasına karşı korumalı)
+            try
+            {
+                var notification = new NotificationLog(
+                    userEmail: "admin@filmkirala.com",
+                    subject: "Rapor Hazır",
+                    message: $"Keyset + Multi-Thread raporunuz hazır! JobId: {jobId}",
+                    isSent: false,
+                    createdAt: DateTime.Now,
+                    sentAt: DateTime.Now,
+                    errorMessage: string.Empty,
+                    type: "ReportReady"
+                );
+
+                _context.NotificationLogs.Add(notification);
+                await _context.SaveChangesAsync();
+            }
+            catch (Exception ex)
+            {
+                // Kolon hatası olsa bile raporun bittiğini konsola bas
+                Console.WriteLine($"⚠️ Bildirim kaydedilemedi ama rapor hazır: {ex.Message}");
+            }
+
+            Console.WriteLine($"✅ İşlem Tamamlandı: {fullPath}");
+        }
+
         public async Task<(bool IsReady, byte[]? FileBytes, string? FileName)> GetReportFileAsync(string jobId)
         {
             if (!Directory.Exists(_exportPath)) return (false, null, null);
-
             var files = Directory.GetFiles(_exportPath, $"Report_{jobId}.*");
             if (files.Length == 0) return (false, null, null);
 
             var filePath = files[0];
             var fileName = Path.GetFileName(filePath);
             var fileBytes = await File.ReadAllBytesAsync(filePath);
-
             return (true, fileBytes, fileName);
-        }
-
-        public async Task CreateLargeReportInBackgroundAsync(string jobId, bool isCsv)
-        {
-            var query = PrepareExportQuery(null, null);
-
-            if (!Directory.Exists(_exportPath)) Directory.CreateDirectory(_exportPath);
-
-            var fileName = $"Report_{jobId}.{(isCsv ? "csv" : "xlsx")}";
-            var fullPath = Path.Combine(_exportPath, fileName);
-
-            await MiniExcel.SaveAsAsync(fullPath, query, excelType: isCsv ? ExcelType.CSV : ExcelType.XLSX);
-
-            var notification = new NotificationLog(
-                userEmail: "admin@filmkirala.com",
-                subject: "Rapor Hazır",
-                message: $"Raporunuz hazır! JobId: {jobId}",
-                isSent: false,
-                createdAt: DateTime.Now,
-                sentAt: DateTime.Now,
-                errorMessage: string.Empty,
-                type: "ReportReady"
-            );
-
-            _context.NotificationLogs.Add(notification);
-            await _context.SaveChangesAsync();
         }
 
         public async Task<object> GetMovieSummaryAsync(int lastId, int pageSize)
