@@ -1,1 +1,0 @@
-}RgC:\Users\sebahattin\Desktop\Dengeage\3.Hafta\FilmKirala\FilmKirala\FilmKirala.Api\FilmKirala.Api.csproj¢net9.0òCSharp13

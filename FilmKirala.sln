@@ -22,6 +22,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FilmKirala.Shared", "FilmKi
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FilmKirala.Test", "FilmKirala.Test\FilmKirala.Test.csproj", "{75CFB83C-806E-454C-A7FF-C1AAE895FA01}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FilmKirala.Report.Api", "FilmKirala.Report.Api\FilmKirala.Report.Api.csproj", "{3C168F36-A166-4E38-98E8-26092276A3A0}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -56,6 +58,10 @@ Global
 		{75CFB83C-806E-454C-A7FF-C1AAE895FA01}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{75CFB83C-806E-454C-A7FF-C1AAE895FA01}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{75CFB83C-806E-454C-A7FF-C1AAE895FA01}.Release|Any CPU.Build.0 = Release|Any CPU
+		{3C168F36-A166-4E38-98E8-26092276A3A0}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3C168F36-A166-4E38-98E8-26092276A3A0}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3C168F36-A166-4E38-98E8-26092276A3A0}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3C168F36-A166-4E38-98E8-26092276A3A0}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -1,63 +1,43 @@
 ###############################################################################
-# Set default behavior to automatically normalize line endings.
+# 📏 SATIR SONU NORMALİZASYONU (LINE ENDINGS)
 ###############################################################################
 * text=auto
 
 ###############################################################################
-# Set default behavior for command prompt diff.
-#
-# This is need for earlier builds of msysgit that does not have it on by
-# default for csharp files.
-# Note: This is only used by command line
+# 🎯 GITHUB DİL İSTATİSTİKLERİ (LINGUIST) - SADECE C# GÖRÜNSÜN
 ###############################################################################
-#*.cs     diff=csharp
+# Önce her şeyi dökümantasyon/görünmez olarak işaretliyoruz [cite: 2026-02-10]
+* linguist-detectable=false
+
+# Sadece C# dosyalarını istatistiklere (Pure C# barı için) dahil et [cite: 2026-02-10]
+*.cs linguist-detectable=true
+*.csproj linguist-detectable=true
+*.sln linguist-detectable=true
+
+# PureBasic ve diğer sızıntıları dökümantasyon say, kod sayma [cite: 2026-02-10]
+*.pb linguist-documentation=true
+*.pbi linguist-documentation=true
+*.json linguist-documentation=true
+*.yml linguist-documentation=true
+*.md linguist-documentation=true
+*.html linguist-documentation=true
 
 ###############################################################################
-# Set the merge driver for project and solution files
-#
-# Merging from the command prompt will add diff markers to the files if there
-# are conflicts (Merging from VS is not affected by the settings below, in VS
-# the diff markers are never inserted). Diff markers may cause the following 
-# file extensions to fail to load in VS. An alternative would be to treat
-# these files as binary and thus will always conflict and require user
-# intervention with every merge. To do so, just uncomment the entries below
+# 🔨 PROJE & SOLUTION DOSYALARI (MERGE AYARLARI)
 ###############################################################################
-#*.sln       merge=binary
-#*.csproj    merge=binary
-#*.vbproj    merge=binary
-#*.vcxproj   merge=binary
-#*.vcproj    merge=binary
-#*.dbproj    merge=binary
-#*.fsproj    merge=binary
-#*.lsproj    merge=binary
-#*.wixproj   merge=binary
-#*.modelproj merge=binary
-#*.sqlproj   merge=binary
-#*.wwaproj   merge=binary
+*.sln     merge=binary
+*.csproj  merge=binary
 
 ###############################################################################
-# behavior for image files
-#
-# image files are treated as binary by default.
+# 🖼️ BİNARY DOSYALAR (GÖRSEL VE DİĞERLERİ)
 ###############################################################################
-#*.jpg   binary
-#*.png   binary
-#*.gif   binary
+*.jpg   binary
+*.png   binary
+*.gif   binary
+*.ico   binary
+*.pdf   diff=astextplain
 
 ###############################################################################
-# diff behavior for common document formats
-# 
-# Convert binary document formats to text before diffing them. This feature
-# is only available from the command line. Turn it on by uncommenting the 
-# entries below.
+# 💻 C# DIFF DAVRANIŞI
 ###############################################################################
-#*.doc   diff=astextplain
-#*.DOC   diff=astextplain
-#*.docx  diff=astextplain
-#*.DOCX  diff=astextplain
-#*.dot   diff=astextplain
-#*.DOT   diff=astextplain
-#*.pdf   diff=astextplain
-#*.PDF   diff=astextplain
-#*.rtf   diff=astextplain
-#*.RTF   diff=astextplain
+*.cs     diff=csharp

@@ -14,6 +14,7 @@ namespace FilmKirala.Infrastructure.Persistence
         public DbSet<RentalPricing> RentalPricings => Set<RentalPricing>();
         public DbSet<Review> Reviews => Set<Review>();
         public DbSet<UserRefreshToken> UserRefreshTokens => Set<UserRefreshToken>();
+        public DbSet<NotificationLog> NotificationLogs => Set< NotificationLog>();
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

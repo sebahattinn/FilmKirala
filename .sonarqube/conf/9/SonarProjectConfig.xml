@@ -1,9 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<SonarProjectConfig xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns="http://www.sonarsource.com/msbuild/analyzer/2021/1">
-  <AnalysisConfigPath>C:\Users\sebahattin\Desktop\Dengeage\3.Hafta\FilmKirala\FilmKirala\.sonarqube\conf\SonarQubeAnalysisConfig.xml</AnalysisConfigPath>
-  <ProjectPath>C:\Users\sebahattin\Desktop\Dengeage\3.Hafta\FilmKirala\FilmKirala\FilmKirala.Application\FilmKirala.Application.csproj</ProjectPath>
-  <FilesToAnalyzePath>C:\Users\sebahattin\Desktop\Dengeage\3.Hafta\FilmKirala\FilmKirala\.sonarqube\conf\9\FilesToAnalyze.txt</FilesToAnalyzePath>
-  <OutPath>C:\Users\sebahattin\Desktop\Dengeage\3.Hafta\FilmKirala\FilmKirala\.sonarqube\out\9</OutPath>
-  <ProjectType>Product</ProjectType>
-  <TargetFramework>net9.0</TargetFramework>
-</SonarProjectConfig>
