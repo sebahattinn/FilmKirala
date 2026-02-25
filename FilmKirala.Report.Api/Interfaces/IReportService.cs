@@ -1,13 +1,13 @@
-﻿using Microsoft.AspNetCore.Mvc;
-
-namespace FilmKirala.Report.Api.Interfaces
+﻿namespace FilmKirala.Report.Api.Interfaces
 {
     public interface IReportService
     {
-        // Rapor özeti dönen metot
         Task<object> GetMovieSummaryAsync(int lastId, int pageSize);
+        Task<MemoryStream> ExportMoviesAsync(int? lastId = null, int? pageSize = null, bool isCsv = false);
+        Task CreateLargeReportInBackgroundAsync(string jobId, bool isCsv);
 
-        // Excel stream dönen metot
-        Task<MemoryStream> ExportMoviesToExcelAsync(int? lastId = null, int? pageSize = null);
+        Task<(bool IsReady, byte[]? FileBytes, string? FileName)> GetReportFileAsync(string jobId);
+
+        string EnqueueReport(bool isCsv);
     }
 }

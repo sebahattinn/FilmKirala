@@ -23,7 +23,7 @@ namespace FilmKirala.Notification.Api.Consumers
 
             try
             {
-               
+                
                 var notificationLog = new NotificationLog(
                     userEmail: context.Message.Email,
                     subject: context.Message.Subject,
@@ -31,7 +31,8 @@ namespace FilmKirala.Notification.Api.Consumers
                     isSent: true,
                     createdAt: DateTime.UtcNow,
                     sentAt: DateTime.UtcNow,
-                    errorMessage: null
+                    errorMessage: string.Empty, 
+                    type: "FilmRental" 
                 );
 
                 await _dbContext.NotificationLogs.AddAsync(notificationLog);

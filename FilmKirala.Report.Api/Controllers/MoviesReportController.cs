@@ -9,28 +9,49 @@ namespace FilmKirala.Report.Api.Controllers
     {
         private readonly IReportService _reportService;
 
-        public MoviesReportController(IReportService reportService)
+        public MoviesReportController(IReportService reportService) => _reportService = reportService;
+
+        [HttpPost("export-background")]
+        public IActionResult ExportBackground([FromQuery] bool isCsv = false)
         {
-            _reportService = reportService;
+            var jobId = _reportService.EnqueueReport(isCsv);
+            return Accepted(new { Status = "Hazırlanıyor", JobId = jobId, CheckStatusUrl = $"/api/MoviesReport/check-status/{jobId}" });
+        }
+
+        [HttpGet("download/{jobId}")]
+        public async Task<IActionResult> DownloadReport(string jobId)
+        {
+            var (isReady, fileBytes, fileName) = await _reportService.GetReportFileAsync(jobId);
+
+            if (!isReady) return NotFound("Rapor henüz hazır değil.");
+
+            string contentType = fileName!.EndsWith(".csv") ? "text/csv" : "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+            return File(fileBytes!, contentType, fileName);
+        }
+
+
+        [HttpGet("check-status/{jobId}")]
+        public async Task<IActionResult> CheckStatus(string jobId)
+        {
+            var (isReady, _, _) = await _reportService.GetReportFileAsync(jobId);
+
+            if (isReady) return Ok(new { Message = "Rapor hazır!", DownloadUrl = $"/api/MoviesReport/download/{jobId}" });
+
+            return Ok(new { Message = "Rapor hala hazırlanıyor... Hangfire Dashboard'u kontrol edebilirsiniz." });
         }
 
         [HttpGet("summary")]
         public async Task<IActionResult> GetMovieSummary([FromQuery] int lastId = 0, [FromQuery] int pageSize = 10)
         {
-            var result = await _reportService.GetMovieSummaryAsync(lastId, pageSize);
-            return Ok(result);
+            return Ok(await _reportService.GetMovieSummaryAsync(lastId, pageSize));
         }
 
-        [HttpGet("export-excel")]
-        public async Task<IActionResult> ExportToExcel([FromQuery] int? lastId = null, [FromQuery] int? pageSize = null)
+        [HttpGet("export-instant")]
+        public async Task<IActionResult> Export([FromQuery] int? lastId = null, [FromQuery] int? pageSize = null, [FromQuery] bool? isCsv = false)
         {
-            var stream = await _reportService.ExportMoviesToExcelAsync(lastId, pageSize);
-
-        
-            string suffix = pageSize.HasValue ? $"_top{pageSize}" : "_all";
-            string fileName = $"Film_Raporu_{DateTime.Now:yyyyMMdd}{suffix}.xlsx";
-
-            return File(stream, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", fileName);
+            bool csvRequest = isCsv.GetValueOrDefault();
+            var stream = await _reportService.ExportMoviesAsync(lastId, pageSize, csvRequest);
+            return File(stream, csvRequest ? "text/csv" : "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", $"Film_Raporu_{DateTime.Now:yyyyMMdd}.{(csvRequest ? "csv" : "xlsx")}");
         }
     }
 }

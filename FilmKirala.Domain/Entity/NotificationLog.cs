@@ -16,9 +16,10 @@ namespace FilmKirala.Domain.Entity
         public DateTime CreatedAt { get; private set; }
         public DateTime? SentAt { get; private set; }
         public string ErrorMessage { get; private set; }
+        public string Type { get; private set; }
 
         protected NotificationLog() { }
-        public NotificationLog(string userEmail,string subject, string message, bool isSent, DateTime createdAt, DateTime sentAt, string errorMessage)
+        public NotificationLog(string userEmail,string subject, string message, bool isSent, DateTime createdAt, DateTime sentAt, string errorMessage, string type)
         {
             UserEmail = userEmail;
             Subject = subject;
@@ -27,7 +28,7 @@ namespace FilmKirala.Domain.Entity
             CreatedAt = createdAt;
             SentAt = sentAt;
             ErrorMessage = errorMessage;
-
+            Type = type;
         }
     }
 }
