@@ -21,6 +21,7 @@ namespace FilmKirala.Infrastructure.Persistence
             
             modelBuilder.ApplyConfigurationsFromAssembly(Assembly.GetExecutingAssembly());
             base.OnModelCreating(modelBuilder);  //  Tüm konfigürasyonları otomatik olarak assembly'den oku
+          //  modelBuilder.Entity<NotificationLog>().Ignore(c => c.Type); bunu iptal edip yerine entities'e atribute koyuyorum.
         }
     }
 }
