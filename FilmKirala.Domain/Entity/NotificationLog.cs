@@ -15,7 +15,7 @@ namespace FilmKirala.Domain.Entity
         public string Message { get; private set; }
         public bool IsSent { get; private set; } 
         public DateTime CreatedAt { get; private set; }
-        public DateTime? SentAt { get; private set; }
+        public DateTime? SentAt { get; private set; } //tarih
         public string ErrorMessage { get; private set; }
 
         public string? Type { get; private set; }

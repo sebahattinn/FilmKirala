@@ -12,7 +12,7 @@ using System.Text.Json;
 
 namespace FilmKirala.Report.Api.Services
 {
-    public class ReportService : IReportService
+    public class ReportService : IReportService          //bu kısım düzeltilecek
     {
         private readonly AppDbContext _context;
         private readonly IServiceScopeFactory _scopeFactory;

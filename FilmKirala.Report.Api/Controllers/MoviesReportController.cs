@@ -39,7 +39,7 @@ namespace FilmKirala.Report.Api.Controllers
 
             return Ok(new { Message = "Rapor hala hazırlanıyor... Hangfire Dashboard'u kontrol edebilirsiniz." });
         }
-
+        //değer mii
         [HttpGet("summary")]
         public async Task<IActionResult> GetMovieSummary([FromQuery] int lastId = 0, [FromQuery] int pageSize = 10)
         {
