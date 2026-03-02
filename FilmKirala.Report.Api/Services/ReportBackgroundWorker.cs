@@ -1,6 +1,7 @@
 using FilmKirala.Infrastructure.Persistence;
 using FilmKirala.Report.Api.Interfaces;
 using Microsoft.EntityFrameworkCore;
+using Dapper;
 
 namespace FilmKirala.Report.Api.Services;
 
@@ -9,7 +10,7 @@ public class ReportBackgroundWorker : BackgroundService
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger<ReportBackgroundWorker> _logger;
     private readonly TimeSpan _interval = TimeSpan.FromSeconds(45);
-    private readonly int _queryTimeout = 60; // 10 saniye çok azdı, 60 yaptık.
+    private readonly int _queryTimeout = 90; // SQL yoğunluğu için 90 saniyeye çıkardık.
 
     public ReportBackgroundWorker(IServiceScopeFactory scopeFactory, ILogger<ReportBackgroundWorker> logger)
     {
@@ -20,23 +21,22 @@ public class ReportBackgroundWorker : BackgroundService
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         _logger.LogInformation("╔════════════════════════════════════════╗");
-        _logger.LogInformation("║   🚀 ReportBackgroundWorker BAŞLADI     ║");
-        _logger.LogInformation("║   ⏱️  Interval: {Interval} saniye         ║", _interval.Seconds);
-        _logger.LogInformation("║   ⌛ Query Timeout: {Timeout} saniye     ║", _queryTimeout);
+        _logger.LogInformation("║    🚀 ReportBackgroundWorker BAŞLADI    ║");
+        _logger.LogInformation("║    ⏱️  Interval: {Interval} saniye      ║", _interval.Seconds);
+        _logger.LogInformation("║    ⌛ Query Timeout: {Timeout} saniye   ║", _queryTimeout);
         _logger.LogInformation("╚════════════════════════════════════════╝");
 
         while (!stoppingToken.IsCancellationRequested)
         {
             var startTime = DateTime.Now;
 
-            // 1. ADIM: KUYRUKTAN İŞ ÇEK (Multi-tasking için Task.Run kullanıldı)
+            // 1. ADIM: KUYRUKTAN İŞ ÇEK
             try
             {
                 if (ReportService.TryDequeue(out var job))
                 {
                     _logger.LogInformation(" [KUYRUK] İş bulundu! JobId: {JobId} başlatılıyor...", job.JobId);
 
-                    // Ana döngüyü bloklamasın diye Task.Run ile ayırıyoruz.
                     _ = Task.Run(async () =>
                     {
                         using var scope = _scopeFactory.CreateScope();
@@ -73,12 +73,17 @@ public class ReportBackgroundWorker : BackgroundService
         using var scope = _scopeFactory.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
-        using var cts = CancellationTokenSource.CreateLinkedTokenSource(stoppingToken);
-        cts.CancelAfter(TimeSpan.FromSeconds(_queryTimeout));
+        // EF Core üzerinden Timeout'u el ile yönetmek için Database.SetCommandTimeout kullanıyoruz
+        db.Database.SetCommandTimeout(_queryTimeout);
 
         try
         {
-            var totalCount = await db.Rentals.AsNoTracking().CountAsync(cts.Token);
+            // Profesyonel Dokunuş: Devasa tabloda kilit atmadan (NOLOCK) hızlıca sayım yapıyoruz.
+            // Bu yöntem timeout hatalarını minimize eder.
+            var conn = db.Database.GetDbConnection();
+            var totalCount = await conn.ExecuteScalarAsync<int>(
+                "SELECT COUNT(*) FROM Rentals WITH (NOLOCK)",
+                commandTimeout: _queryTimeout);
 
             _logger.LogInformation("╔════════════════════════════════════════╗");
             _logger.LogInformation("║  📊 DB KONTROL - {Time}           ║", DateTime.Now.ToString("HH:mm:ss"));

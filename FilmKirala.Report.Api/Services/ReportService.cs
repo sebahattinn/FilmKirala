@@ -9,7 +9,8 @@ using Microsoft.Extensions.DependencyInjection;
 using System.Data;
 using System.Text.Json;
 using System.Diagnostics;
-using MSConfig = Microsoft.Extensions.Configuration.IConfiguration;  // Çakışmayı önlemek için Microsoft'un IConfiguration'ına alias veriyoruz
+using StackExchange.Profiling;
+using MSConfig = Microsoft.Extensions.Configuration.IConfiguration;
 
 namespace FilmKirala.Report.Api.Services
 {
@@ -20,7 +21,6 @@ namespace FilmKirala.Report.Api.Services
         private readonly string _exportPath;
         private readonly MSConfig _configuration;
 
-        // Arka plan işlerini tutmak için thread-safe bir kuyruk
         private static readonly ConcurrentQueue<(string JobId, bool IsCsv)> _reportQueue = new();
 
         public ReportService(AppDbContext context, IServiceScopeFactory scopeFactory, MSConfig configuration)
@@ -43,110 +43,138 @@ namespace FilmKirala.Report.Api.Services
 
         public async Task CreateLargeReportInBackgroundAsync(string jobId, bool isCsv)
         {
-            Stopwatch sw = Stopwatch.StartNew();
-            if (!Directory.Exists(_exportPath)) Directory.CreateDirectory(_exportPath);
-            var fullPath = Path.Combine(_exportPath, $"Report_{jobId}.{(isCsv ? "csv" : "xlsx")}");
-
-            if (File.Exists(fullPath)) File.Delete(fullPath);
-
-            using (var scope = _scopeFactory.CreateScope())
+            // MiniProfiler'ın arka plan işlerinde çalışabilmesi için scope oluşturuyoruz
+            using (MiniProfiler.Current.Step($"Arka Plan Raporu: {jobId}"))
             {
-                var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+                Stopwatch sw = Stopwatch.StartNew();
+                if (!Directory.Exists(_exportPath)) Directory.CreateDirectory(_exportPath);
+                var fullPath = Path.Combine(_exportPath, $"Report_{jobId}.{(isCsv ? "csv" : "xlsx")}");
 
-                // CRITICAL FIX: ConnectionString'i direkt konfigürasyondan alıyoruz, Pool'un insafına bırakmıyoruz.
-                using var conn = new Microsoft.Data.SqlClient.SqlConnection(_configuration.GetConnectionString("DefaultConnection"));
-                if (conn.State == ConnectionState.Closed) await conn.OpenAsync();
+                if (File.Exists(fullPath)) File.Delete(fullPath);
 
-                // 1. ADIM: Toplam Kayıt Sayısını Al (Yüzde hesaplamak için)
-                var totalMovies = await conn.ExecuteScalarAsync<int>("SELECT COUNT(*) FROM Movies");
-                Console.WriteLine($"\n[BAŞLADI] JobId: {jobId} | Toplam Film: {totalMovies} | Hedef: {fullPath}");
-
-                // 2. ADIM: Kiralama sayılarını çek (Cache gibi kullanıyoruz)
-                var rentals = await SqlMapper.QueryAsync<(int MovieId, int Count)>(conn,
-                    "SELECT MovieId, COUNT(*) as Count FROM Rentals GROUP BY MovieId",
-                    commandTimeout: 300);
-                var rentalDict = rentals.ToDictionary(x => x.MovieId, x => x.Count);
-
-                int batchSize = 40000;
-                int lastId = 0;
-                int processedCount = 0;
-                bool isFirstBatch = true;
-                int threadCount = Environment.ProcessorCount;
-
-                while (true)
+                using (var scope = _scopeFactory.CreateScope())
                 {
-                    // 3. ADIM: Batch veriyi çek
-                    var movies = (await SqlMapper.QueryAsync(conn,
-                        "SELECT Id, Title, Genre FROM Movies WHERE Id > @lastId ORDER BY Id OFFSET 0 ROWS FETCH NEXT @batchSize ROWS ONLY",
-                        new { lastId, batchSize },
-                        commandTimeout: 120)).ToList();
+                    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+                    using var conn = new Microsoft.Data.SqlClient.SqlConnection(_configuration.GetConnectionString("DefaultConnection"));
+                    if (conn.State == ConnectionState.Closed) await conn.OpenAsync();
 
-                    if (!movies.Any()) break;
+              
+                    Dictionary<int, int> rentalDict;
+                    using (MiniProfiler.Current.Step("DB: Kiralama Sayılarını Gruplayarak Çekme"))
+                    {
+                        var rentals = await SqlMapper.QueryAsync<(int MovieId, int Count)>(conn,
+                            "SELECT MovieId, COUNT(*) as Count FROM Rentals WITH (NOLOCK) GROUP BY MovieId",
+                            commandTimeout: 300);
+                        rentalDict = rentals.ToDictionary(x => x.MovieId, x => x.Count);
+                    }
 
-                    // 4. ADIM: PLINQ ile CPU'yu verimli kullanarak dönüştür
-                    var currentBatchRows = movies.AsParallel()
-                        .WithDegreeOfParallelism(threadCount)
-                        .Select(m => new
+                    int batchSize = 40000;
+                    int lastId = 0;
+                    int processedCount = 0;
+                    bool isFirstBatch = true;
+                    int totalMovies = await conn.ExecuteScalarAsync<int>("SELECT COUNT(*) FROM Movies WITH (NOLOCK)");
+
+                    while (true)
+                    {
+                        List<dynamic> movies;
+                        using (MiniProfiler.Current.Step($"Batch Çekiliyor (LastId: {lastId})"))
                         {
-                            FilmId = (int)m.Id,
-                            FilmAdi = (string)m.Title,
-                            Tur = (string)m.Genre,
-                            KiralamaSayisi = rentalDict.GetValueOrDefault((int)m.Id, 0)
-                        }).ToList();
+                            movies = (await SqlMapper.QueryAsync(conn,
+                                "SELECT Id, Title, Genre FROM Movies WHERE Id > @lastId ORDER BY Id OFFSET 0 ROWS FETCH NEXT @batchSize ROWS ONLY",
+                                new { lastId, batchSize },
+                                commandTimeout: 120)).ToList();
+                        }
 
-                    // 5. ADIM: Bellek Yönetimi ve Yazma
-                    if (isFirstBatch)
-                    {
-                        await MiniExcel.SaveAsAsync(fullPath, currentBatchRows, excelType: isCsv ? ExcelType.CSV : ExcelType.XLSX);
-                        isFirstBatch = false;
+                        if (!movies.Any()) break;
+               
+                        List<object> currentBatchRows;
+                        using (MiniProfiler.Current.Step("PLINQ: Mapping İşlemi"))
+                        {
+                            var activeThreads = new ConcurrentDictionary<int, byte>();
+                            currentBatchRows = movies.AsParallel()
+                                .WithDegreeOfParallelism(Environment.ProcessorCount)
+                                .Select(m => {
+                                    activeThreads.TryAdd(Thread.CurrentThread.ManagedThreadId, 0);
+                                    return new
+                                    {
+                                        FilmId = (int)m.Id,
+                                        FilmAdi = (string)m.Title,
+                                        Tur = (string)m.Genre,
+                                        KiralamaSayisi = rentalDict.GetValueOrDefault((int)m.Id, 0)
+                                    };
+                                }).Cast<object>().ToList();
+
+                           
+                            var threadList = string.Join(",", activeThreads.Keys.OrderBy(x => x));
+                            double progress = (double)(processedCount + movies.Count) / totalMovies * 100;
+                            Console.ForegroundColor = ConsoleColor.Cyan;
+                            Console.Write($"\r[BATCH] %{progress:F1} | İşçiler: [{threadList}] | Job: {jobId}");
+                            Console.ResetColor();
+                        }
+                    
+                        using (MiniProfiler.Current.Step("IO: MiniExcel ile Diske Yazma"))
+                        {
+                            if (isFirstBatch)
+                            {
+                                await MiniExcel.SaveAsAsync(fullPath, currentBatchRows, excelType: isCsv ? ExcelType.CSV : ExcelType.XLSX);
+                                isFirstBatch = false;
+                            }
+                            else
+                            {
+                                await MiniExcel.InsertAsync(fullPath, currentBatchRows, excelType: isCsv ? ExcelType.CSV : ExcelType.XLSX);
+                            }
+                        }
+
+                        processedCount += movies.Count;
+                        lastId = (int)movies.Last().Id;
                     }
-                    else
+
+                    using (MiniProfiler.Current.Step("DB: Bildirim Kaydı Atılıyor"))
                     {
-                        await MiniExcel.InsertAsync(fullPath, currentBatchRows, excelType: isCsv ? ExcelType.CSV : ExcelType.XLSX);
+                        var notification = new NotificationLog(
+                            userEmail: "admin@filmkirala.com",
+                            subject: "Rapor Hazır",
+                            message: $"Rapor bitti. JobId: {jobId} | Süre: {sw.Elapsed.TotalSeconds:F1}s",
+                            isSent: false,
+                            createdAt: DateTime.Now,
+                            sentAt: DateTime.Now,
+                            errorMessage: string.Empty,
+                            type: isCsv ? "CSV" : "XLSX"
+                        );
+                        db.NotificationLogs.Add(notification);
+                        await db.SaveChangesAsync();
                     }
-
-                    processedCount += movies.Count;
-                    lastId = (int)movies.Last().Id;
-
-                    // Dinamik Progress Log
-                    double progress = (double)processedCount / totalMovies * 100;
-                    Console.WriteLine($"[İLERLEME] %{progress:F2} | İşlenen: {processedCount} | Thread: {threadCount} | RAM: Güvende");
-
-                    currentBatchRows.Clear();
-                    movies.Clear();
                 }
-
-                // 6. ADIM: Bildirim Loglama (Aynı scope içinde DB'ye yazıyoruz)
-                try
-                {
-                    var notification = new NotificationLog(
-                        userEmail: "admin@filmkirala.com",
-                        subject: "Rapor Hazır",
-                        message: $"Rapor bitti. JobId: {jobId} | Süre: {sw.Elapsed.TotalSeconds:F1}s",
-                        isSent: false,
-                        createdAt: DateTime.Now,
-                        sentAt: DateTime.Now,
-                        errorMessage: string.Empty,
-                        type: isCsv ? "CSV" : "XLSX"
-                    );
-                    db.NotificationLogs.Add(notification);
-                    await db.SaveChangesAsync();
-                }
-                catch (Exception ex) { Console.WriteLine($"Bildirim hatası: {ex.Message}"); }
+                sw.Stop();
+                Console.WriteLine($"\n Rapor Bitti! JobId: {jobId} | Süre: {sw.Elapsed.TotalSeconds:F1} sn.\n");
             }
-
-            sw.Stop();
-            Console.WriteLine($"✅ Rapor Bitti! Toplam Süre: {sw.Elapsed.TotalSeconds:F1} saniye.\n");
         }
-
         public async Task<(bool IsReady, byte[]? FileBytes, string? FileName)> GetReportFileAsync(string jobId)
         {
             if (!Directory.Exists(_exportPath)) return (false, null, null);
+
             var files = Directory.GetFiles(_exportPath, $"Report_{jobId}.*");
             if (files.Length == 0) return (false, null, null);
-            return (true, await File.ReadAllBytesAsync(files[0]), Path.GetFileName(files[0]));
-        }
 
+            var filePath = files[0];
+
+            try
+            {
+                // FileShare.ReadWrite kullanarak dosya o an yazılsa bile okuyabiliyoruz
+                using (var stream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
+                {
+                    using (var ms = new MemoryStream())
+                    {
+                        await stream.CopyToAsync(ms);
+                        return (true, ms.ToArray(), Path.GetFileName(filePath));
+                    }
+                }
+            }
+            catch (IOException)
+            {
+                return (false, null, null);
+            }
+        }
         public async Task<object> GetMovieSummaryAsync(int lastId, int pageSize)
         {
             using var scope = _scopeFactory.CreateScope();

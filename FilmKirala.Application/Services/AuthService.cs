@@ -10,8 +10,7 @@ using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
 
-namespace FilmKirala.Application.Services
-{
+namespace FilmKirala.Application.Services;
     public class AuthService(IUnitOfWork unitOfWork, IConfiguration configuration, ICacheService cacheService) : IAuthService
     {
         public async Task<AuthResponseDto> RegisterAsync(RegisterRequestDto request)
@@ -121,4 +120,3 @@ namespace FilmKirala.Application.Services
             throw new NotImplementedException();
         }
     }
-}
