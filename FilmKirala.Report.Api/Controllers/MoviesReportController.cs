@@ -37,9 +37,9 @@ namespace FilmKirala.Report.Api.Controllers
 
             if (isReady) return Ok(new { Message = "Rapor hazır!", DownloadUrl = $"/api/MoviesReport/download/{jobId}" });
 
-            return Ok(new { Message = "Rapor hala hazırlanıyor... Hangfire Dashboard'u kontrol edebilirsiniz." });
+            return Ok(new { Message = "Rapor hala hazırlanıyor... Manuel Worker kuyruğu işliyor." });
         }
-        //değer mii
+       
         [HttpGet("summary")]
         public async Task<IActionResult> GetMovieSummary([FromQuery] int lastId = 0, [FromQuery] int pageSize = 10)
         {
