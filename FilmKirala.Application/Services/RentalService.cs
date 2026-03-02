@@ -51,22 +51,39 @@ namespace FilmKirala.Application.Services
 
         public async Task<IEnumerable<RentalListDto>> GetUserRentalsAsync(int userId)
         {
-            await CheckExpiredRentalsAsync();
+       //   await CheckExpiredRentalsAsync(userId);
             var rentals = await unitOfWork.Rentals.FindAsync(r => r.UserId == userId);
             return mapper.Map<IEnumerable<RentalListDto>>(rentals);
         }
 
+        public async Task CheckExpiredRentalsAsync(int? userId = null)
+        {
+            var query = userId.HasValue
+                ? await unitOfWork.Rentals.FindAsync(r => r.UserId == userId.Value && r.Status && r.EndRentalDate <= DateTime.UtcNow)
+                : await unitOfWork.Rentals.FindAsync(r => r.Status && r.EndRentalDate <= DateTime.UtcNow);
+
+            var expired = query.ToList();
+
+            if (expired.Any())
+            {
+                var movieIds = expired.Select(r => r.MovieId).Distinct().ToList();
+                var movies = (await unitOfWork.Movies.FindAsync(m => movieIds.Contains(m.Id))).ToDictionary(m => m.Id);
+
+                foreach (var rental in expired)
+                {
+                    rental.ExpireRental();
+                    if (movies.TryGetValue(rental.MovieId, out var movie))
+                    {
+                        movie.IncreaseStock();
+                    }
+                }
+                await unitOfWork.CompleteAsync();
+            }
+        }
+
         public async Task CheckExpiredRentalsAsync()
         {
-            var expired = await unitOfWork.Rentals.FindAsync(r => r.Status && r.EndRentalDate <= DateTime.UtcNow);
-            foreach (var rental in expired)
-            {
-                rental.ExpireRental();
-                var movie = await unitOfWork.Movies.GetByIdAsync(rental.MovieId);
-                movie?.IncreaseStock();
-            }
-
-            if (expired.Any()) await unitOfWork.CompleteAsync();
+            await CheckExpiredRentalsAsync(null);
         }
 
         private static DateTime CalculateEndDate(DurationType type, int val, int qty)
