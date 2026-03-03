@@ -3,6 +3,7 @@ using Xunit;
 using FilmKirala.Application.Services;
 using FilmKirala.Application.DTOs;
 using FilmKirala.Application.Interfaces;
+using FilmKirala.Application.Interfaces.Services; 
 using FilmKirala.Domain.Entity;
 using FilmKirala.Domain.Enums;
 
@@ -12,7 +13,7 @@ namespace FilmKirala.Test.UnitTests
     {
         private readonly Mock<IUnitOfWork> _uowMock;
         private readonly Mock<IBusService> _busMock;
-       
+        private readonly Mock<ICacheService> _cacheMock; 
 
         private readonly RentalService _rentalService;
 
@@ -20,12 +21,13 @@ namespace FilmKirala.Test.UnitTests
         {
             _uowMock = new Mock<IUnitOfWork>();
             _busMock = new Mock<IBusService>();
+            _cacheMock = new Mock<ICacheService>(); 
 
-           
             _rentalService = new RentalService(
                 _uowMock.Object,
-                null!, // IMapper şimdilik test logic'inde null olabilir
-                _busMock.Object);
+                null!,
+                _busMock.Object,
+                _cacheMock.Object); 
         }
 
         [Fact]
@@ -33,10 +35,8 @@ namespace FilmKirala.Test.UnitTests
         {
             // Arrange
             var userId = 1;
-            // Bakiyesi 10 TL olan bir kullanıcı [cite: 2026-02-10]
             var user = new User("Seba", "seba@test.com", "h", "s", 10, Roles.User);
             var movie = new Movie("Batman", "Desc", "Action", 5, true);
-            // 50 TL'lik bir fiyatlandırma ekliyoruz [cite: 2026-02-10]
             movie.AddRentalPricing(DurationType.Günlük, 1, 50);
 
             _uowMock.Setup(x => x.Users.GetByIdAsync(userId)).ReturnsAsync(user);

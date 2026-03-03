@@ -6,12 +6,12 @@ using FilmKirala.Domain.Entity;
 using FilmKirala.Domain.Enums;
 using FilmKirala.Application.DTOs;
 using FilmKirala.Application.Interfaces;
+using FilmKirala.Application.Interfaces.Services; 
 using Moq;
 using Xunit;
 
 namespace FilmKirala.Test.IntegrationTests
 {
-  
     public class AdvancedRentalIntegrationTests
     {
         private static AppDbContext GetUniqueDbContext()
@@ -27,7 +27,11 @@ namespace FilmKirala.Test.IntegrationTests
         {
             using var context = GetUniqueDbContext();
             var uow = new UnitOfWork(context, new MovieRepository(context), new UserRepository(context));
-            var rentalService = new RentalService(uow, null!, new Mock<IBusService>().Object);
+            var busMock = new Mock<IBusService>();
+            var cacheMock = new Mock<ICacheService>(); 
+
+            //  FIX: cacheMock.Object dördüncü parametre olarak eklendi
+            var rentalService = new RentalService(uow, null!, busMock.Object, cacheMock.Object);
 
             var user = new User("PoorUser", "poor@test.com", "h", "s", 100, Roles.User);
             var movie = new Movie("Expensive Film", "Desc", "Genre", 10, true);
@@ -47,7 +51,11 @@ namespace FilmKirala.Test.IntegrationTests
         {
             using var context = GetUniqueDbContext();
             var uow = new UnitOfWork(context, new MovieRepository(context), new UserRepository(context));
-            var rentalService = new RentalService(uow, null!, new Mock<IBusService>().Object);
+            var busMock = new Mock<IBusService>();
+            var cacheMock = new Mock<ICacheService>(); 
+
+            //  FIX: cacheMock.Object dördüncü parametre olarak eklendi
+            var rentalService = new RentalService(uow, null!, busMock.Object, cacheMock.Object);
 
             var user = new User("StockTest", "stock@test.com", "h", "s", 1000, Roles.User);
             var movie = new Movie("NoStock", "Desc", "Genre", 0, true);
@@ -67,7 +75,11 @@ namespace FilmKirala.Test.IntegrationTests
         {
             using var context = GetUniqueDbContext();
             var uow = new UnitOfWork(context, new MovieRepository(context), new UserRepository(context));
-            var rentalService = new RentalService(uow, null!, new Mock<IBusService>().Object);
+            var busMock = new Mock<IBusService>();
+            var cacheMock = new Mock<ICacheService>(); 
+
+            //  FIX: cacheMock.Object dördüncü parametre olarak eklendi
+            var rentalService = new RentalService(uow, null!, busMock.Object, cacheMock.Object);
 
             var user = new User("Tester", "test@test.com", "h", "s", 1000, Roles.User);
             var movie = new Movie("Matrix", "Desc", "Sci-Fi", 10, true);

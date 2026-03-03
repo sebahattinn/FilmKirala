@@ -6,6 +6,7 @@ using FilmKirala.Domain.Entity;
 using FilmKirala.Domain.Enums;
 using FilmKirala.Application.DTOs;
 using FilmKirala.Application.Interfaces;
+using FilmKirala.Application.Interfaces.Services; // ICacheService için eklendi
 using Moq;
 using Xunit;
 
@@ -28,7 +29,10 @@ namespace FilmKirala.Test.IntegrationTests
             using var context = GetDbContext();
             var uow = new UnitOfWork(context, new MovieRepository(context), new UserRepository(context));
             var busMock = new Mock<IBusService>();
-            var rentalService = new RentalService(uow, null!, busMock.Object);
+            var cacheMock = new Mock<ICacheService>(); // 🚀 Mock eklendi
+
+            // 🚀 FIX: cacheMock.Object dördüncü parametre olarak eklendi
+            var rentalService = new RentalService(uow, null!, busMock.Object, cacheMock.Object);
             var reviewService = new ReviewService(uow);
 
             // 2. Domain Entity Testleri (Rental.cs ve Movie.cs Coverage için)

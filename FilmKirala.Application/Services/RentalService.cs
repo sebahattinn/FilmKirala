@@ -11,7 +11,8 @@ namespace FilmKirala.Application.Services
     public class RentalService(
         IUnitOfWork unitOfWork,
         IMapper mapper,
-        IBusService busService) : IRentalService
+        IBusService busService,
+        ICacheService cacheService) : IRentalService // CacheService enjekte edildi
     {
         public async Task<RentResponseDto> RentMovieAsync(RentRequestDto request, int userId)
         {
@@ -26,7 +27,7 @@ namespace FilmKirala.Application.Services
 
             int totalCost = pricing.Price * request.Quantity;
 
-            // Mantık: Önce düşümler yapılır, sonra kaydedilir.
+            // 1. Bakiyeyi ve Stoğu düş
             user.DecreaseBalance(totalCost);
             movie.DecreaseStock();
 
@@ -37,8 +38,12 @@ namespace FilmKirala.Application.Services
 
             await unitOfWork.Rentals.AddAsync(rental);
 
-            // Tüm değişiklikleri (User, Movie, Rental) tek transaction ile yansıt
+            // 2. DB'ye kaydet
             await unitOfWork.CompleteAsync();
+
+            // 3. KRİTİK: Cache'i temizle. 
+            // Kullanıcı profilini/bakiyesini cache'ten okuyorsa artık taze veriyi DB'den alacak.
+            await cacheService.RemoveAsync($"user_profile_{userId}");
 
             await busService.PublishAsync(new FilmRentedEvent
             {
@@ -47,7 +52,6 @@ namespace FilmKirala.Application.Services
                 Message = $"'{movie.Title}' kiralandı. Tutar: {totalCost} TL"
             });
 
-            // Frontend'e güncel WalletBalance'ı gönderiyoruz
             return new RentResponseDto(true, "Kiralama başarılı!", totalCost,
                 user.WalletBalance, endDate, pricing.DurationType.ToString(), request.Quantity,
                 $"{request.Quantity} {pricing.DurationType} Kiralama");
@@ -55,7 +59,6 @@ namespace FilmKirala.Application.Services
 
         public async Task<IEnumerable<RentalListDto>> GetUserRentalsAsync(int userId)
         {
-            // FindAsync artık Tracking yaptığı için hızlıca çekip sıralıyoruz
             var rentals = await unitOfWork.Rentals.FindAsync(r => r.UserId == userId);
             var orderedRentals = rentals.OrderByDescending(r => r.Id).ToList();
 

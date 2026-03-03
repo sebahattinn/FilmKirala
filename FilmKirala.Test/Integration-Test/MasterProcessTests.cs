@@ -6,6 +6,7 @@ using FilmKirala.Domain.Entity;
 using FilmKirala.Domain.Enums;
 using FilmKirala.Application.DTOs;
 using FilmKirala.Application.Interfaces;
+using FilmKirala.Application.Interfaces.Services; 
 using Moq;
 using Xunit;
 
@@ -28,9 +29,10 @@ namespace FilmKirala.Test.IntegrationTests
             using var context = GetDbContext();
             var uow = new UnitOfWork(context, new MovieRepository(context), new UserRepository(context));
             var busMock = new Mock<IBusService>();
+            var cacheMock = new Mock<ICacheService>();
 
-          
-            var rentalService = new RentalService(uow, null!, busMock.Object);
+            // 🚀 FIX: Dördüncü parametre olarak cacheMock.Object eklendi
+            var rentalService = new RentalService(uow, null!, busMock.Object, cacheMock.Object);
             var reviewService = new ReviewService(uow);
             var movieService = new MovieService(uow, null!);
 
@@ -38,7 +40,6 @@ namespace FilmKirala.Test.IntegrationTests
             var user = new User("MasterSeba", "master@bursa.com", "hash", "salt", 500, Roles.User);
             await context.Users.AddAsync(user);
 
-           
             var createMovieDto = new CreateMovieDto
             {
                 Title = "Inception Master",
@@ -48,7 +49,7 @@ namespace FilmKirala.Test.IntegrationTests
                 Pricings = new List<PricingDto> { new() { DurationType = DurationType.Günlük, DurationValue = 1, Price = 50 } }
             };
 
-            // 3. Film Ekleme (Domain üzerinden direkt ekleyip coverage alıyoruz)
+            // 3. Film Ekleme
             var movie = new Movie(createMovieDto.Title, createMovieDto.Description, createMovieDto.Genre, createMovieDto.Stock, true);
             movie.AddRentalPricing(DurationType.Günlük, 1, 50);
             await uow.Movies.AddAsync(movie);
@@ -58,17 +59,16 @@ namespace FilmKirala.Test.IntegrationTests
             var rentRequest = new RentRequestDto(movie.Id, DurationType.Günlük, 2);
             var rentalResult = await rentalService.RentMovieAsync(rentRequest, user.Id);
 
-            // 5. Yorum Yapma Testi (🚀 FIX: CreateReviewDto initializer ile güncellendi)
+            // 5. Yorum Yapma Testi
             var reviewDto = new CreateReviewDto { MovieId = movie.Id, Comment = "Harika!", Rating = 5 };
             await reviewService.AddReviewAsync(reviewDto, user.Id);
 
-            // 6. Sonuçları Doğrula (Assert)
+            // 6. Sonuçları Doğrula
             var dbUser = await context.Users.FindAsync(user.Id);
             var dbMovie = await context.Movies.FindAsync(movie.Id);
 
-            Assert.Equal(400, dbUser!.WalletBalance); // 500 - (50*2)
+            Assert.Equal(400, dbUser!.WalletBalance); 
             Assert.Equal(9, dbMovie!.Stock);
-            
             Assert.NotNull(rentalResult);
         }
     }

@@ -3,6 +3,7 @@ using Xunit;
 using FilmKirala.Application.Services;
 using FilmKirala.Application.DTOs;
 using FilmKirala.Application.Interfaces;
+using FilmKirala.Application.Interfaces.Services; 
 using FilmKirala.Domain.Entity;
 using FilmKirala.Domain.Enums;
 using Microsoft.Extensions.Configuration;
@@ -50,7 +51,6 @@ namespace FilmKirala.Test.UnitTests
             var cacheMock = new Mock<ICacheService>();
             var authService = new AuthService(uowMock.Object, configMock.Object, cacheMock.Object);
 
-          
             uowMock.Setup(x => x.Users.GetByEmailAsync(It.IsAny<string>())).ReturnsAsync((User)null!);
 
             await Assert.ThrowsAsync<KeyNotFoundException>(() =>
@@ -65,9 +65,11 @@ namespace FilmKirala.Test.UnitTests
         {
             var uowMock = new Mock<IUnitOfWork>();
             var busMock = new Mock<IBusService>();
-            var rentalService = new RentalService(uowMock.Object, null!, busMock.Object);
+            var cacheMock = new Mock<ICacheService>(); 
 
-           
+            //  FIX: cacheMock.Object dördüncü parametre olarak eklendi
+            var rentalService = new RentalService(uowMock.Object, null!, busMock.Object, cacheMock.Object);
+
             var user = new User("Seba", "seba@test.com", "h", "s", 100, Roles.User);
             uowMock.Setup(x => x.Users.GetByIdAsync(It.IsAny<int>())).ReturnsAsync(user);
 
@@ -76,7 +78,6 @@ namespace FilmKirala.Test.UnitTests
 
             var request = new RentRequestDto(999, DurationType.Günlük, 1);
 
-           
             await Assert.ThrowsAsync<KeyNotFoundException>(() => rentalService.RentMovieAsync(request, user.Id));
         }
     }

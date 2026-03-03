@@ -27,18 +27,18 @@ namespace FilmKirala.Infrastructure.Repositories
                 query = query.Where(predicate);
             }
 
+            // MANTIĞI: SQL 10 milyon veride Skip/Take yaparken bir sıralama bekler.
+            // "Id" kolonuna göre tersten sıralıyoruz ki yeni filmler hep en üstte gelsin.
             return await query
+                        .OrderByDescending(x => EF.Property<int>(x, "Id"))
                         .Skip((page - 1) * pageSize)
                         .Take(pageSize)
                         .ToListAsync();
         }
 
         public async Task AddAsync(T entity) => await _dbSet.AddAsync(entity);
-
         public async Task<T?> GetByIdAsync(int id) => await _dbSet.FindAsync(id);
-
         public void Remove(T entity) => _dbSet.Remove(entity);
-
         public void Update(T entity) => _dbSet.Update(entity);
 
         public async Task<IEnumerable<T>> FindAsync(Expression<Func<T, bool>> predicate)
