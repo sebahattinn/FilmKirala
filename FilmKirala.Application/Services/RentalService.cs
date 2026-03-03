@@ -15,11 +15,9 @@ namespace FilmKirala.Application.Services
     {
         public async Task<RentResponseDto> RentMovieAsync(RentRequestDto request, int userId)
         {
-            // 1. Kullanıcıyı çek (Tracking aktif)
             var user = await unitOfWork.Users.GetByIdAsync(userId)
                         ?? throw new KeyNotFoundException("Kullanıcı bulunamadı.");
 
-            // 2. Filmi çek (Tracking aktif)
             var movie = await unitOfWork.Movies.GetMovieWithDetailsAsync(request.MovieId)
                          ?? throw new KeyNotFoundException("Film bulunamadı.");
 
@@ -28,7 +26,7 @@ namespace FilmKirala.Application.Services
 
             int totalCost = pricing.Price * request.Quantity;
 
-            // 3. Değişiklikleri yap (Bellekteki nesneler güncelleniyor)
+            // Mantık: Önce düşümler yapılır, sonra kaydedilir.
             user.DecreaseBalance(totalCost);
             movie.DecreaseStock();
 
@@ -37,10 +35,9 @@ namespace FilmKirala.Application.Services
             var rental = new Rental();
             rental.RentalsCreate(DateTime.UtcNow, endDate, totalCost, true, user, movie, pricing);
 
-            // 4. Yeni kiralama kaydını ekle
             await unitOfWork.Rentals.AddAsync(rental);
 
-            // 5. TEK BİR COMMIT: Hem bakiye düşüşü, hem stok düşüşü, hem kiralama kaydı tek seferde SQL'e gider.
+            // Tüm değişiklikleri (User, Movie, Rental) tek transaction ile yansıt
             await unitOfWork.CompleteAsync();
 
             await busService.PublishAsync(new FilmRentedEvent
@@ -50,6 +47,7 @@ namespace FilmKirala.Application.Services
                 Message = $"'{movie.Title}' kiralandı. Tutar: {totalCost} TL"
             });
 
+            // Frontend'e güncel WalletBalance'ı gönderiyoruz
             return new RentResponseDto(true, "Kiralama başarılı!", totalCost,
                 user.WalletBalance, endDate, pricing.DurationType.ToString(), request.Quantity,
                 $"{request.Quantity} {pricing.DurationType} Kiralama");
@@ -57,9 +55,8 @@ namespace FilmKirala.Application.Services
 
         public async Task<IEnumerable<RentalListDto>> GetUserRentalsAsync(int userId)
         {
+            // FindAsync artık Tracking yaptığı için hızlıca çekip sıralıyoruz
             var rentals = await unitOfWork.Rentals.FindAsync(r => r.UserId == userId);
-
-            // Sıralamayı bellek üzerinde (In-memory) yaparak en yeni kiralamayı başa alıyoruz
             var orderedRentals = rentals.OrderByDescending(r => r.Id).ToList();
 
             return mapper.Map<IEnumerable<RentalListDto>>(orderedRentals);

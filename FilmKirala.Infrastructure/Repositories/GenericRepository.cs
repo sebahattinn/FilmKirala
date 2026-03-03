@@ -22,7 +22,6 @@ namespace FilmKirala.Infrastructure.Repositories
         {
             IQueryable<T> query = _dbSet.AsNoTracking();
 
-            // Eğer filtre geldiyse sorguya ekle
             if (predicate != null)
             {
                 query = query.Where(predicate);
@@ -33,11 +32,16 @@ namespace FilmKirala.Infrastructure.Repositories
                         .Take(pageSize)
                         .ToListAsync();
         }
+
         public async Task AddAsync(T entity) => await _dbSet.AddAsync(entity);
+
         public async Task<T?> GetByIdAsync(int id) => await _dbSet.FindAsync(id);
+
         public void Remove(T entity) => _dbSet.Remove(entity);
+
         public void Update(T entity) => _dbSet.Update(entity);
+
         public async Task<IEnumerable<T>> FindAsync(Expression<Func<T, bool>> predicate)
-            => await _dbSet.Where(predicate).AsNoTracking().ToListAsync();
+            => await _dbSet.Where(predicate).ToListAsync();
     }
 }
