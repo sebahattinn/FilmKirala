@@ -4,6 +4,7 @@ using FilmKirala.Application.Interfaces;
 using FilmKirala.Application.Interfaces.Services;
 using FilmKirala.Domain.Entity;
 using FilmKirala.Domain.Enums;
+using Microsoft.EntityFrameworkCore;
 
 namespace FilmKirala.Application.Services
 {
@@ -29,7 +30,10 @@ namespace FilmKirala.Application.Services
                                 (string.IsNullOrEmpty(genre) || m.Genre == genre)
             );
 
-            return _mapper.Map<IEnumerable<MovieListDto>>(movies);
+            // Yeni eklenen filmleri en üstte göster
+            var orderedMovies = movies.OrderByDescending(m => m.Id).ToList();
+
+            return _mapper.Map<IEnumerable<MovieListDto>>(orderedMovies);
         }
 
         public async Task<MovieDetailDto?> GetMovieByIdAsync(int id)

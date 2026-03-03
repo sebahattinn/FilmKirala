@@ -15,9 +15,11 @@ namespace FilmKirala.Application.Services
     {
         public async Task<RentResponseDto> RentMovieAsync(RentRequestDto request, int userId)
         {
+            // 1. Kullanıcıyı çek (Tracking aktif)
             var user = await unitOfWork.Users.GetByIdAsync(userId)
                         ?? throw new KeyNotFoundException("Kullanıcı bulunamadı.");
 
+            // 2. Filmi çek (Tracking aktif)
             var movie = await unitOfWork.Movies.GetMovieWithDetailsAsync(request.MovieId)
                          ?? throw new KeyNotFoundException("Film bulunamadı.");
 
@@ -26,6 +28,7 @@ namespace FilmKirala.Application.Services
 
             int totalCost = pricing.Price * request.Quantity;
 
+            // 3. Değişiklikleri yap (Bellekteki nesneler güncelleniyor)
             user.DecreaseBalance(totalCost);
             movie.DecreaseStock();
 
@@ -34,13 +37,16 @@ namespace FilmKirala.Application.Services
             var rental = new Rental();
             rental.RentalsCreate(DateTime.UtcNow, endDate, totalCost, true, user, movie, pricing);
 
+            // 4. Yeni kiralama kaydını ekle
             await unitOfWork.Rentals.AddAsync(rental);
+
+            // 5. TEK BİR COMMIT: Hem bakiye düşüşü, hem stok düşüşü, hem kiralama kaydı tek seferde SQL'e gider.
             await unitOfWork.CompleteAsync();
 
             await busService.PublishAsync(new FilmRentedEvent
             {
                 Email = user.Email,
-                Subject = "Film Kiralama Başarılı! ",
+                Subject = "Film Kiralama Başarılı!",
                 Message = $"'{movie.Title}' kiralandı. Tutar: {totalCost} TL"
             });
 
@@ -51,9 +57,12 @@ namespace FilmKirala.Application.Services
 
         public async Task<IEnumerable<RentalListDto>> GetUserRentalsAsync(int userId)
         {
-       //   await CheckExpiredRentalsAsync(userId);
             var rentals = await unitOfWork.Rentals.FindAsync(r => r.UserId == userId);
-            return mapper.Map<IEnumerable<RentalListDto>>(rentals);
+
+            // Sıralamayı bellek üzerinde (In-memory) yaparak en yeni kiralamayı başa alıyoruz
+            var orderedRentals = rentals.OrderByDescending(r => r.Id).ToList();
+
+            return mapper.Map<IEnumerable<RentalListDto>>(orderedRentals);
         }
 
         public async Task CheckExpiredRentalsAsync(int? userId = null)
@@ -81,10 +90,7 @@ namespace FilmKirala.Application.Services
             }
         }
 
-        public async Task CheckExpiredRentalsAsync()
-        {
-            await CheckExpiredRentalsAsync(null);
-        }
+        public async Task CheckExpiredRentalsAsync() => await CheckExpiredRentalsAsync(null);
 
         private static DateTime CalculateEndDate(DurationType type, int val, int qty)
         {
