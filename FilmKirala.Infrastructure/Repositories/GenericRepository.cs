@@ -15,17 +15,26 @@ namespace FilmKirala.Infrastructure.Repositories
             _context = context;
             _dbSet = context.Set<T>();
         }
+
         public async Task<IEnumerable<T>> GetAllAsync() => await _dbSet.AsNoTracking().ToListAsync();
 
-        public async Task<IEnumerable<T>> GetPagedAsync(int page, int pageSize)
+        public async Task<IEnumerable<T>> GetPagedAsync(int page, int pageSize, Expression<Func<T, bool>>? predicate = null)
         {
-            return await _dbSet.AsNoTracking()
-                               .Skip((page - 1) * pageSize)
-                               .Take(pageSize)
-                               .ToListAsync();
+            IQueryable<T> query = _dbSet.AsNoTracking();
+
+            // Eğer filtre geldiyse sorguya ekle
+            if (predicate != null)
+            {
+                query = query.Where(predicate);
+            }
+
+            return await query
+                        .Skip((page - 1) * pageSize)
+                        .Take(pageSize)
+                        .ToListAsync();
         }
         public async Task AddAsync(T entity) => await _dbSet.AddAsync(entity);
-        public async Task<T?> GetByIdAsync(int id) => await _dbSet.FindAsync(id); // Task<T?> dönüşü sağladık
+        public async Task<T?> GetByIdAsync(int id) => await _dbSet.FindAsync(id);
         public void Remove(T entity) => _dbSet.Remove(entity);
         public void Update(T entity) => _dbSet.Update(entity);
         public async Task<IEnumerable<T>> FindAsync(Expression<Func<T, bool>> predicate)
