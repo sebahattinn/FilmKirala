@@ -13,8 +13,15 @@ namespace FilmKirala.Infrastructure.Repositories
 
         public async Task<User?> GetByEmailAsync(string email)
         {
-            // Emaile göre kullanıcı bulur
             return await _context.Users.FirstOrDefaultAsync(u => u.Email == email);
+        }
+
+       
+        public async Task<User?> GetByRefreshTokenAsync(string refreshToken)
+        {
+            return await _context.Users
+                .Include(u => u.RefreshTokens) // Token listesini de çekmezsen patlarız
+                .FirstOrDefaultAsync(u => u.RefreshTokens.Any(t => t.Token == refreshToken));
         }
     }
 }

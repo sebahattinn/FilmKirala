@@ -1,14 +1,14 @@
-﻿using FilmKirala.Application.DTOs;
+﻿using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
+using System.Security.Cryptography;
+using System.Text;
+using FilmKirala.Application.DTOs;
 using FilmKirala.Application.Interfaces;
 using FilmKirala.Application.Interfaces.Services;
 using FilmKirala.Domain.Entity;
 using FilmKirala.Domain.Enums;
 using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
-using System.IdentityModel.Tokens.Jwt;
-using System.Security.Claims;
-using System.Security.Cryptography;
-using System.Text;
 
 namespace FilmKirala.Application.Services;
 
@@ -30,13 +30,14 @@ public class AuthService(IUnitOfWork unitOfWork, IConfiguration configuration, I
             Roles.User
         );
 
-        user.AddRefreshToken(GenerateRefreshToken(), DateTime.UtcNow.AddDays(7));
+        var refreshToken = GenerateRefreshToken();
+        user.AddRefreshToken(refreshToken, DateTime.UtcNow.AddDays(7));
 
         await unitOfWork.Users.AddAsync(user);
         await unitOfWork.CompleteAsync();
 
         return new AuthResponseDto(user.Id, user.Username, user.Email, CreateToken(user),
-            user.RefreshTokens.Last().Token, user.Roles.ToString(), user.WalletBalance);
+            refreshToken, user.Roles.ToString(), user.WalletBalance);
     }
 
     public async Task<AuthResponseDto> LoginAsync(LoginRequestDto request)
@@ -66,17 +67,30 @@ public class AuthService(IUnitOfWork unitOfWork, IConfiguration configuration, I
         await cacheService.RemoveAsync($"user_profile_{user.Id}");
     }
 
-    private static void CreatePasswordHash(string password, out byte[] passwordHash, out byte[] passwordSalt)
+    public async Task<AuthResponseDto> RefreshTokenAsync(RefreshTokenRequestDto request)
     {
-        using var hmac = new HMACSHA512();
-        passwordSalt = hmac.Key;
-        passwordHash = hmac.ComputeHash(Encoding.UTF8.GetBytes(password));
-    }
+        // 1. Kullanıcıyı bul (Refresh token ile eşleşen kullanıcıyı DB'den çekiyoruz)
+        var user = await unitOfWork.Users.GetByRefreshTokenAsync(request.RefreshToken);
 
-    private static bool VerifyPasswordHash(string password, byte[] storedHash, byte[] storedSalt)
-    {
-        using var hmac = new HMACSHA512(storedSalt);
-        return hmac.ComputeHash(Encoding.UTF8.GetBytes(password)).SequenceEqual(storedHash);
+        if (user == null)
+            throw new UnauthorizedAccessException("Refresh token geçersiz.");
+
+        var tokenRecord = user.RefreshTokens.FirstOrDefault(x => x.Token == request.RefreshToken);
+        if (tokenRecord == null || !tokenRecord.IsActive)
+            throw new UnauthorizedAccessException("Refresh token süresi dolmuş veya geçersiz.");
+
+        // 2. Yeni tokenları üret
+        var newToken = CreateToken(user);
+        var newRefreshToken = GenerateRefreshToken();
+
+        // 3. Mevcut token'ı iptal et ve yenisini ekle (Domain logic)
+        tokenRecord.Revoke();
+        user.AddRefreshToken(newRefreshToken, DateTime.UtcNow.AddDays(7));
+
+        await unitOfWork.CompleteAsync();
+
+        return new AuthResponseDto(user.Id, user.Username, user.Email, newToken,
+            newRefreshToken, user.Roles.ToString(), user.WalletBalance);
     }
 
     private string CreateToken(User user)
@@ -102,17 +116,24 @@ public class AuthService(IUnitOfWork unitOfWork, IConfiguration configuration, I
         return new JwtSecurityTokenHandler().WriteToken(token);
     }
 
+    private static void CreatePasswordHash(string password, out byte[] passwordHash, out byte[] passwordSalt)
+    {
+        using var hmac = new HMACSHA512();
+        passwordSalt = hmac.Key;
+        passwordHash = hmac.ComputeHash(Encoding.UTF8.GetBytes(password));
+    }
+
+    private static bool VerifyPasswordHash(string password, byte[] storedHash, byte[] storedSalt)
+    {
+        using var hmac = new HMACSHA512(storedSalt);
+        return hmac.ComputeHash(Encoding.UTF8.GetBytes(password)).SequenceEqual(storedHash);
+    }
+
     private static string GenerateRefreshToken()
     {
         var randomNumber = new byte[64];
         using var rng = RandomNumberGenerator.Create();
         rng.GetBytes(randomNumber);
         return Convert.ToBase64String(randomNumber);
-    }
-
-    public async Task<AuthResponseDto> RefreshTokenAsync(RefreshTokenRequestDto request)
-    {
-        await Task.CompletedTask;
-        throw new NotImplementedException();
     }
 }
