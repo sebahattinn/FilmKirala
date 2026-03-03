@@ -1,10 +1,10 @@
 ﻿using System.Text.Json;
 using FilmKirala.Application.Interfaces;
+using FilmKirala.Application.Interfaces.Services; 
 using Microsoft.Extensions.Caching.Distributed;
 
 namespace FilmKirala.Infrastructure.Services
 {
-   
     public class CacheService(IDistributedCache cache) : ICacheService
     {
         public async Task<T?> GetAsync<T>(string key)
@@ -22,11 +22,12 @@ namespace FilmKirala.Infrastructure.Services
             await cache.SetStringAsync(key, JsonSerializer.Serialize(value), options);
         }
 
+   
         public async Task RemoveAsync(string key) => await cache.RemoveAsync(key);
 
         public async Task RemoveByPrefixAsync(string prefix)
         {
-          
+            
             await Task.CompletedTask;
         }
     }
