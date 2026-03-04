@@ -56,6 +56,22 @@ public class AuthService(IUnitOfWork unitOfWork, IConfiguration configuration, I
             refreshToken, user.Roles.ToString(), user.WalletBalance);
     }
 
+    public async Task<AuthResponseDto> GetCurrentUserAsync(int userId)
+    {
+        var user = await unitOfWork.Users.GetByIdAsync(userId);
+        if (user == null) throw new KeyNotFoundException("Kullanıcı bulunamadı.");
+
+        return new AuthResponseDto(
+            user.Id,
+            user.Username,
+            user.Email,
+            string.Empty,
+            string.Empty,
+            user.Roles.ToString(),
+            user.WalletBalance
+        );
+    }
+
     public async Task UpdateUserBalanceAsync(string email, int newBalance)
     {
         var user = await unitOfWork.Users.GetByEmailAsync(email);

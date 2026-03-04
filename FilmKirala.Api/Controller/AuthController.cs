@@ -37,5 +37,19 @@ namespace FilmKirala.Api.Controllers
 
             return Ok(new { Message = "User balance updated successfully." });
         }
+
+        [Authorize]
+        [HttpGet("me")]
+        public async Task<IActionResult> GetCurrentUser()
+        {
+            // Token içindeki NameIdentifier (Id) claim'ini çekiyoruz
+            var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+
+            if (string.IsNullOrEmpty(userIdClaim))
+                return Unauthorized("Token geçersiz.");
+
+            var result = await _authService.GetCurrentUserAsync(int.Parse(userIdClaim));
+            return Ok(result);
+        }
     }
 }
