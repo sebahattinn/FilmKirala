@@ -1,15 +1,17 @@
-﻿using Dapper;
+using Dapper;
 using FilmKirala.Domain.Entity;
+using FilmKirala.Domain.Enums;
 using FilmKirala.Infrastructure.Persistence;
 using FilmKirala.Report.Api.Interfaces;
 using Microsoft.EntityFrameworkCore;
-using MiniExcelLibs;
-using System.Collections.Concurrent;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using System.Data;
-using System.Text.Json;
-using System.Diagnostics;
+using MiniExcelLibs;
 using StackExchange.Profiling;
+using System.Collections.Concurrent;
+using System.Data;
+using System.Diagnostics;
+using System.Text.Json;
 using MSConfig = Microsoft.Extensions.Configuration.IConfiguration;
 
 namespace FilmKirala.Report.Api.Services
@@ -21,8 +23,6 @@ namespace FilmKirala.Report.Api.Services
         private readonly string _exportPath;
         private readonly MSConfig _configuration;
 
-        private static readonly ConcurrentQueue<(string JobId, bool IsCsv)> _reportQueue = new();
-
         public ReportService(AppDbContext context, IServiceScopeFactory scopeFactory, MSConfig configuration)
         {
             _context = context;
@@ -32,19 +32,20 @@ namespace FilmKirala.Report.Api.Services
             _exportPath = Path.Combine(parentDir, "FilmKiralaExports");
         }
 
-        public string EnqueueReport(bool isCsv)
+        // DB'ye Pending kaydı atar, JobId döner — artık in-memory kuyruk yok
+        public async Task<string> EnqueueReportAsync(bool isCsv)
         {
-            var jobId = Guid.NewGuid().ToString().Substring(0, 8);
-            _reportQueue.Enqueue((jobId, isCsv));
+            var jobId = Guid.NewGuid().ToString("N")[..8];
+            var job = ReportJob.Create(jobId, isCsv);
+            _context.ReportJobs.Add(job);
+            await _context.SaveChangesAsync();
             return jobId;
         }
 
-        public static bool TryDequeue(out (string JobId, bool IsCsv) job) => _reportQueue.TryDequeue(out job);
-
+        // BackgroundWorker tarafından çağrılır
         public async Task CreateLargeReportInBackgroundAsync(string jobId, bool isCsv)
         {
-            // MiniProfiler'ın arka plan işlerinde çalışabilmesi için scope oluşturuyoruz
-            using (MiniProfiler.Current.Step($"Arka Plan Raporu: {jobId}"))
+            using (MiniProfiler.Current?.Step($"Arka Plan Raporu: {jobId}"))
             {
                 Stopwatch sw = Stopwatch.StartNew();
                 if (!Directory.Exists(_exportPath)) Directory.CreateDirectory(_exportPath);
@@ -58,9 +59,8 @@ namespace FilmKirala.Report.Api.Services
                     using var conn = new Microsoft.Data.SqlClient.SqlConnection(_configuration.GetConnectionString("DefaultConnection"));
                     if (conn.State == ConnectionState.Closed) await conn.OpenAsync();
 
-              
                     Dictionary<int, int> rentalDict;
-                    using (MiniProfiler.Current.Step("DB: Kiralama Sayılarını Gruplayarak Çekme"))
+                    using (MiniProfiler.Current?.Step("DB: Kiralama Sayılarını Gruplayarak Çekme"))
                     {
                         var rentals = await SqlMapper.QueryAsync<(int MovieId, int Count)>(conn,
                             "SELECT MovieId, COUNT(*) as Count FROM Rentals WITH (NOLOCK) GROUP BY MovieId",
@@ -77,7 +77,7 @@ namespace FilmKirala.Report.Api.Services
                     while (true)
                     {
                         List<dynamic> movies;
-                        using (MiniProfiler.Current.Step($"Batch Çekiliyor (LastId: {lastId})"))
+                        using (MiniProfiler.Current?.Step($"Batch Çekiliyor (LastId: {lastId})"))
                         {
                             movies = (await SqlMapper.QueryAsync(conn,
                                 "SELECT Id, Title, Genre FROM Movies WHERE Id > @lastId ORDER BY Id OFFSET 0 ROWS FETCH NEXT @batchSize ROWS ONLY",
@@ -86,9 +86,9 @@ namespace FilmKirala.Report.Api.Services
                         }
 
                         if (!movies.Any()) break;
-               
+
                         List<object> currentBatchRows;
-                        using (MiniProfiler.Current.Step("PLINQ: Mapping İşlemi"))
+                        using (MiniProfiler.Current?.Step("PLINQ: Mapping İşlemi"))
                         {
                             var activeThreads = new ConcurrentDictionary<int, byte>();
                             currentBatchRows = movies.AsParallel()
@@ -104,24 +104,27 @@ namespace FilmKirala.Report.Api.Services
                                     };
                                 }).Cast<object>().ToList();
 
-                           
                             var threadList = string.Join(",", activeThreads.Keys.OrderBy(x => x));
                             double progress = (double)(processedCount + movies.Count) / totalMovies * 100;
                             Console.ForegroundColor = ConsoleColor.Cyan;
                             Console.Write($"\r[BATCH] %{progress:F1} | İşçiler: [{threadList}] | Job: {jobId}");
                             Console.ResetColor();
                         }
-                    
-                        using (MiniProfiler.Current.Step("IO: MiniExcel ile Diske Yazma"))
+
+                        using (MiniProfiler.Current?.Step("IO: MiniExcel ile Diske Yazma"))
                         {
+                            var excelType = isCsv ? ExcelType.CSV : ExcelType.XLSX;
+
                             if (isFirstBatch)
                             {
-                                await MiniExcel.SaveAsAsync(fullPath, currentBatchRows, excelType: isCsv ? ExcelType.CSV : ExcelType.XLSX);
+                                // İlk partide dosyayı sıfırdan oluşturur
+                                await MiniExcel.SaveAsAsync(fullPath, currentBatchRows, excelType: excelType);
                                 isFirstBatch = false;
                             }
                             else
                             {
-                                await MiniExcel.InsertAsync(fullPath, currentBatchRows, excelType: isCsv ? ExcelType.CSV : ExcelType.XLSX);
+                                // Sonraki partilerde mevcut sayfanın (Sheet1) altına ekleme yapar
+                                await MiniExcel.InsertAsync(fullPath, currentBatchRows, sheetName: "Sheet1", excelType: excelType);
                             }
                         }
 
@@ -129,7 +132,19 @@ namespace FilmKirala.Report.Api.Services
                         lastId = (int)movies.Last().Id;
                     }
 
-                    using (MiniProfiler.Current.Step("DB: Bildirim Kaydı Atılıyor"))
+                    // Job'ı Completed olarak işaretle + dosya yolunu kaydet
+                    using (MiniProfiler.Current?.Step("DB: Job Durumu Güncelleniyor"))
+                    {
+                        var reportJob = await db.ReportJobs.FirstOrDefaultAsync(j => j.JobId == jobId);
+                        if (reportJob != null)
+                        {
+                            reportJob.MarkAsCompleted(fullPath);
+                            await db.SaveChangesAsync();
+                        }
+                    }
+
+                    // Bildirim kaydı
+                    using (MiniProfiler.Current?.Step("DB: Bildirim Kaydı Atılıyor"))
                     {
                         var notification = new NotificationLog(
                             userEmail: "admin@filmkirala.com",
@@ -145,36 +160,50 @@ namespace FilmKirala.Report.Api.Services
                         await db.SaveChangesAsync();
                     }
                 }
+
                 sw.Stop();
                 Console.WriteLine($"\n Rapor Bitti! JobId: {jobId} | Süre: {sw.Elapsed.TotalSeconds:F1} sn.\n");
             }
         }
+
+        // DB'de Completed ve dosya varsa byte[] döner
         public async Task<(bool IsReady, byte[]? FileBytes, string? FileName)> GetReportFileAsync(string jobId)
         {
-            if (!Directory.Exists(_exportPath)) return (false, null, null);
+            var job = await _context.ReportJobs.FirstOrDefaultAsync(j => j.JobId == jobId);
+            if (job == null || job.Status != ReportJobStatus.Completed || job.FilePath == null)
+                return (false, null, null);
 
-            var files = Directory.GetFiles(_exportPath, $"Report_{jobId}.*");
-            if (files.Length == 0) return (false, null, null);
-
-            var filePath = files[0];
+            if (!File.Exists(job.FilePath)) return (false, null, null);
 
             try
             {
-                // FileShare.ReadWrite kullanarak dosya o an yazılsa bile okuyabiliyoruz
-                using (var stream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
-                {
-                    using (var ms = new MemoryStream())
-                    {
-                        await stream.CopyToAsync(ms);
-                        return (true, ms.ToArray(), Path.GetFileName(filePath));
-                    }
-                }
+                using var stream = new FileStream(job.FilePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+                using var ms = new MemoryStream();
+                await stream.CopyToAsync(ms);
+                return (true, ms.ToArray(), Path.GetFileName(job.FilePath));
             }
             catch (IOException)
             {
                 return (false, null, null);
             }
         }
+
+        // DB'deki job durumunu string döner
+        public async Task<string> GetJobStatusAsync(string jobId)
+        {
+            var job = await _context.ReportJobs.FirstOrDefaultAsync(j => j.JobId == jobId);
+            if (job == null) return "NotFound";
+
+            return job.Status switch
+            {
+                ReportJobStatus.Pending => "Pending",
+                ReportJobStatus.Processing => "Processing",
+                ReportJobStatus.Completed => "Completed",
+                ReportJobStatus.Failed => "Failed",
+                _ => "Unknown"
+            };
+        }
+
         public async Task<object> GetMovieSummaryAsync(int lastId, int pageSize)
         {
             using var scope = _scopeFactory.CreateScope();

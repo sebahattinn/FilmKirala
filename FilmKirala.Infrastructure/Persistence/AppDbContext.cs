@@ -14,14 +14,13 @@ namespace FilmKirala.Infrastructure.Persistence
         public DbSet<RentalPricing> RentalPricings => Set<RentalPricing>();
         public DbSet<Review> Reviews => Set<Review>();
         public DbSet<UserRefreshToken> UserRefreshTokens => Set<UserRefreshToken>();
-        public DbSet<NotificationLog> NotificationLogs => Set< NotificationLog>();
+        public DbSet<NotificationLog> NotificationLogs => Set<NotificationLog>();
+        public DbSet<ReportJob> ReportJobs => Set<ReportJob>();
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
-            
             modelBuilder.ApplyConfigurationsFromAssembly(Assembly.GetExecutingAssembly());
-            base.OnModelCreating(modelBuilder);  //  Tüm konfigürasyonları otomatik olarak assembly'den oku
-          //  modelBuilder.Entity<NotificationLog>().Ignore(c => c.Type); bunu iptal edip yerine entities'e atribute koyuyorum.
+            base.OnModelCreating(modelBuilder);
         }
     }
 }

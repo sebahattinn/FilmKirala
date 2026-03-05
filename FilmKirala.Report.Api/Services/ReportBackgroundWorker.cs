@@ -1,7 +1,10 @@
+using FilmKirala.Domain.Enums;
 using FilmKirala.Infrastructure.Persistence;
 using FilmKirala.Report.Api.Interfaces;
 using Microsoft.EntityFrameworkCore;
-using Dapper;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 
 namespace FilmKirala.Report.Api.Services;
 
@@ -9,8 +12,9 @@ public class ReportBackgroundWorker : BackgroundService
 {
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger<ReportBackgroundWorker> _logger;
-    private readonly TimeSpan _interval = TimeSpan.FromSeconds(45);
-    private readonly int _queryTimeout = 90; // SQL yoğunluğu için 90 saniyeye çıkardık.
+    private readonly TimeSpan _pollInterval = TimeSpan.FromSeconds(5);
+    private readonly SemaphoreSlim _semaphore = new SemaphoreSlim(3);
+    private int _processedCount = 0; // Toplam işlenen rapor sayacı
 
     public ReportBackgroundWorker(IServiceScopeFactory scopeFactory, ILogger<ReportBackgroundWorker> logger)
     {
@@ -20,83 +24,99 @@ public class ReportBackgroundWorker : BackgroundService
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        _logger.LogInformation("╔════════════════════════════════════════╗");
-        _logger.LogInformation("║    🚀 ReportBackgroundWorker BAŞLADI    ║");
-        _logger.LogInformation("║    ⏱️  Interval: {Interval} saniye      ║", _interval.Seconds);
-        _logger.LogInformation("║    ⌛ Query Timeout: {Timeout} saniye   ║", _queryTimeout);
-        _logger.LogInformation("╚════════════════════════════════════════╝");
+        _logger.LogInformation(">>> [REPORT-WORKER] Started | Polling: {Interval}s | MaxConcurrency: 3", _pollInterval.Seconds);
 
         while (!stoppingToken.IsCancellationRequested)
         {
-            var startTime = DateTime.Now;
-
-            // 1. ADIM: KUYRUKTAN İŞ ÇEK
-            try
+            try                      // dragonfile, gratan mı grafan mı ne garnet cassandra  lokalden Jmatter yapıyormuş Jmatter'ı kubernetes'a atıyoruz araya network girmiyo daha da iyi oluyo
             {
-                if (ReportService.TryDequeue(out var job))
-                {
-                    _logger.LogInformation(" [KUYRUK] İş bulundu! JobId: {JobId} başlatılıyor...", job.JobId);
+                // Heartbeat logu: Sistem yaşıyor mu görelim
+                _logger.LogDebug("[HEARTBEAT] {Time} - Bekleyen iş aranıyor... (Active Slots: {Slots}/3)",
+                    DateTime.Now.ToString("HH:mm:ss"), 3 - _semaphore.CurrentCount);
 
-                    _ = Task.Run(async () =>
-                    {
-                        using var scope = _scopeFactory.CreateScope();
-                        var reportService = scope.ServiceProvider.GetRequiredService<IReportService>();
-                        await reportService.CreateLargeReportInBackgroundAsync(job.JobId, job.IsCsv);
-                    }, stoppingToken);
-                }
+                await ProcessNextPendingJobAsync(stoppingToken);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, " Kuyruktaki rapor işlenirken hata!");
+                _logger.LogCritical(ex, "[FATAL ERROR] BackgroundWorker ana döngüsü patladı!");
             }
 
-            // 2. ADIM: PERİYODİK DB KONTROLÜ
-            try
-            {
-                await CheckDatabaseWithSafety(stoppingToken);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, " Periyodik DB kontrol hatası!");
-            }
-
-            var duration = DateTime.Now - startTime;
-            _logger.LogInformation(" [DÖNGÜ] Bitti. Süre: {Duration:F0}ms | ⏰ {Time}",
-                duration.TotalMilliseconds, DateTime.Now.ToString("HH:mm:ss"));
-
-            await Task.Delay(_interval, stoppingToken);
+            await Task.Delay(_pollInterval, stoppingToken);
         }
     }
 
-    private async Task CheckDatabaseWithSafety(CancellationToken stoppingToken)
+    private async Task ProcessNextPendingJobAsync(CancellationToken stoppingToken)
     {
         using var scope = _scopeFactory.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
-        // EF Core üzerinden Timeout'u el ile yönetmek için Database.SetCommandTimeout kullanıyoruz
-        db.Database.SetCommandTimeout(_queryTimeout);
+        var pendingJob = await db.ReportJobs
+            .Where(j => j.Status == ReportJobStatus.Pending)
+            .OrderBy(j => j.CreatedAt)
+            .FirstOrDefaultAsync(stoppingToken);
 
-        try
-        {
-            // Profesyonel Dokunuş: Devasa tabloda kilit atmadan (NOLOCK) hızlıca sayım yapıyoruz.
-            // Bu yöntem timeout hatalarını minimize eder.
-            var conn = db.Database.GetDbConnection();
-            var totalCount = await conn.ExecuteScalarAsync<int>(
-                "SELECT COUNT(*) FROM Rentals WITH (NOLOCK)",
-                commandTimeout: _queryTimeout);
+        if (pendingJob == null) return;
 
-            _logger.LogInformation("╔════════════════════════════════════════╗");
-            _logger.LogInformation("║  📊 DB KONTROL - {Time}           ║", DateTime.Now.ToString("HH:mm:ss"));
-            _logger.LogInformation("║  📦 Toplam Kiralama: {Count,-10}      ║", totalCount);
-            _logger.LogInformation("╚════════════════════════════════════════╝");
-        }
-        catch (OperationCanceledException)
+        // İşi kaptık!
+        _logger.LogWarning("[NEW JOB]  Bekleyen rapor yakalandı! JobId: {JobId}", pendingJob.JobId);
+
+        pendingJob.MarkAsProcessing();
+        await db.SaveChangesAsync(stoppingToken);
+
+        var jobId = pendingJob.JobId;
+        var isCsv = pendingJob.IsCsv;
+
+        // Thread Limiti Kontrolü
+        if (_semaphore.CurrentCount == 0)
         {
-            _logger.LogWarning(" [UYARI] DB Kontrolü zaman aşımına uğradı!");
+            _logger.LogInformation("[QUEUED]  Tüm threadler dolu. {JobId} kuyrukta bekliyor...", jobId);
         }
-        catch (Exception ex)
+
+        await _semaphore.WaitAsync(stoppingToken);
+
+        _ = Task.Run(async () =>
         {
-            _logger.LogError(ex, " DB okuma hatası!");
-        }
+            _logger.LogInformation("[START]  İşleniyor: {JobId} (Thread: {ThreadId})", jobId, Environment.CurrentManagedThreadId);
+            var startTime = DateTime.Now;
+
+            try
+            {
+                using var jobScope = _scopeFactory.CreateScope();
+                var reportService = jobScope.ServiceProvider.GetRequiredService<IReportService>();
+
+                await reportService.CreateLargeReportInBackgroundAsync(jobId, isCsv);
+
+                var duration = DateTime.Now - startTime;
+                Interlocked.Increment(ref _processedCount);
+                _logger.LogInformation("[SUCCESS]  Bitti: {JobId} | Süre: {Sec}sn | Toplam: {Count}",
+                    jobId, Math.Round(duration.TotalSeconds, 2), _processedCount);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "[ERROR]  Patladı: {JobId} | Mesaj: {Msg}", jobId, ex.Message);
+
+                try
+                {
+                    using var failScope = _scopeFactory.CreateScope();
+                    var failDb = failScope.ServiceProvider.GetRequiredService<AppDbContext>();
+                    var failedJob = await failDb.ReportJobs.FirstOrDefaultAsync(j => j.JobId == jobId);
+                    if (failedJob != null)
+                    {
+                        failedJob.MarkAsFailed();
+                        await failDb.SaveChangesAsync();
+                        _logger.LogInformation("[DB UPDATE]  {JobId} durumu 'Failed' olarak güncellendi.", jobId);
+                    }
+                }
+                catch (Exception dbEx)
+                {
+                    _logger.LogError(dbEx, "[CRITICAL] DB güncellemesi yapılamadı! JobId: {JobId}", jobId);
+                }
+            }
+            finally
+            {
+                _semaphore.Release();
+                _logger.LogDebug("[RELEASE]  Slot boşaldı. Kalan aktif iş: {Count}/3", 3 - _semaphore.CurrentCount);
+            }
+        }, stoppingToken);
     }
 }

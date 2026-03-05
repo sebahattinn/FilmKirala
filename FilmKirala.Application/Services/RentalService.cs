@@ -12,7 +12,7 @@ namespace FilmKirala.Application.Services
         IUnitOfWork unitOfWork,
         IMapper mapper,
         IBusService busService,
-        ICacheService cacheService) : IRentalService // CacheService enjekte edildi
+        ICacheService cacheService) : IRentalService 
     {
         public async Task<RentResponseDto> RentMovieAsync(RentRequestDto request, int userId)
         {
@@ -27,7 +27,7 @@ namespace FilmKirala.Application.Services
 
             int totalCost = pricing.Price * request.Quantity;
 
-            // 1. Bakiyeyi ve Stoğu düş
+           
             user.DecreaseBalance(totalCost);
             movie.DecreaseStock();
 
@@ -38,18 +38,17 @@ namespace FilmKirala.Application.Services
 
             await unitOfWork.Rentals.AddAsync(rental);
 
-            // 2. DB'ye kaydet
-            await unitOfWork.CompleteAsync();
+         
+            await unitOfWork.CompleteAsync();   // save the db
 
-            // 3. KRİTİK: Cache'i temizle. 
-            // Kullanıcı profilini/bakiyesini cache'ten okuyorsa artık taze veriyi DB'den alacak.
-            await cacheService.RemoveAsync($"user_profile_{userId}");
+           
+            await cacheService.RemoveAsync($"user_profile_{userId}");        //Remove the Cache 
 
-            await busService.PublishAsync(new FilmRentedEvent
+            await busService.PublishAsync(new FilmRentedEvent               
             {
                 Email = user.Email,
-                Subject = "Film Kiralama Başarılı!",
-                Message = $"'{movie.Title}' kiralandı. Tutar: {totalCost} TL"
+                Subject = "Film Kiralama Başarılı!", 
+                Message = $"'{movie.Title}' kiralandı. Tutar: {totalCost} TL"          
             });
 
             return new RentResponseDto(true, "Kiralama başarılı!", totalCost,
