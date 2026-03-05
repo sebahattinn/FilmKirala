@@ -126,7 +126,7 @@ namespace FilmKirala.Report.Api.Services
                                 // Sonraki partilerde mevcut sayfanın (Sheet1) altına ekleme yapar
                                 await MiniExcel.InsertAsync(fullPath, currentBatchRows, sheetName: "Sheet1", excelType: excelType);
                             }
-                        }
+                        } 
 
                         processedCount += movies.Count;
                         lastId = (int)movies.Last().Id;

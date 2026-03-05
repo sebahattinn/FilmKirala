@@ -56,6 +56,14 @@ namespace FilmKirala.Domain.Entity
             Stock--;
         }
 
+        public void DecreaseStock(int quantity)
+        {
+            if (quantity <= 0) throw new ArgumentException("Miktar sıfırdan büyük olmalı.");
+            if (Stock < quantity)
+                throw new InvalidOperationException($"'{Title}' stok yetersiz! Mevcut: {Stock}, İstenen: {quantity}");
+            Stock -= quantity;
+        }
+
         public void IncreaseStock()
         {
             Stock++;

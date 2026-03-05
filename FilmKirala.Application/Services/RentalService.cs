@@ -25,11 +25,20 @@ namespace FilmKirala.Application.Services
             var pricing = movie.RentalPricings.FirstOrDefault(p => p.DurationType == request.DurationType)
                            ?? throw new InvalidOperationException("Bu kiralama seçeneği mevcut değil.");
 
+            // Stok yeterliliği (quantity kadar kopya var mı?)
+            if (movie.Stock < request.Quantity)
+                throw new InvalidOperationException(
+                    $"'{movie.Title}' stok yetersiz! Mevcut: {movie.Stock}, İstenen: {request.Quantity}");
+
             int totalCost = pricing.Price * request.Quantity;
 
-           
+            // Bakiye kontrolü User.DecreaseBalance içinde de var ama önce explicit kontrol
+            if (user.WalletBalance < totalCost)
+                throw new InvalidOperationException(
+                    $"Bakiye yetersiz! Gereken: {totalCost} TL, Mevcut: {user.WalletBalance} TL");
+
             user.DecreaseBalance(totalCost);
-            movie.DecreaseStock();
+            movie.DecreaseStock(request.Quantity);
 
             DateTime endDate = CalculateEndDate(pricing.DurationType, pricing.DurationValue, request.Quantity);
 
@@ -96,8 +105,11 @@ namespace FilmKirala.Application.Services
             int total = val * qty;
             return type switch
             {
-                DurationType.Saatlik => DateTime.UtcNow.AddHours(total),
-                DurationType.Günlük => DateTime.UtcNow.AddDays(total),
+                DurationType.Saatlik  => DateTime.UtcNow.AddHours(total),
+                DurationType.Günlük   => DateTime.UtcNow.AddDays(total),
+                DurationType.Haftalık => DateTime.UtcNow.AddDays(total * 7),
+                DurationType.Aylık    => DateTime.UtcNow.AddMonths(total),
+                DurationType.Yıllık   => DateTime.UtcNow.AddYears(total),
                 _ => DateTime.UtcNow.AddDays(total)
             };
         }

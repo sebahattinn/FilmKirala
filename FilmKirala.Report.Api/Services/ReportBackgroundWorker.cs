@@ -21,7 +21,7 @@ public class ReportBackgroundWorker : BackgroundService
         _scopeFactory = scopeFactory;
         _logger = logger;
     }
-
+    
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         _logger.LogInformation(">>> [REPORT-WORKER] Started | Polling: {Interval}s | MaxConcurrency: 3", _pollInterval.Seconds);
