@@ -32,7 +32,7 @@ namespace FilmKirala.Report.Api.Services
             _exportPath = Path.Combine(parentDir, "FilmKiralaExports");
         }
 
-        // DB'ye Pending kaydı atar, JobId döner — artık in-memory kuyruk yok
+        // DB'ye Pending kaydı atar, JobId döner 
         public async Task<string> EnqueueReportAsync(bool isCsv)
         {
             var jobId = Guid.NewGuid().ToString("N")[..8];
@@ -117,7 +117,7 @@ namespace FilmKirala.Report.Api.Services
 
                             if (isFirstBatch)
                             {
-                                // İlk partide dosyayı sıfırdan oluşturur
+                                // İlk partide dosyayı sıfırdan oluşturur. MiniExcel Dosyasını 
                                 await MiniExcel.SaveAsAsync(fullPath, currentBatchRows, excelType: excelType);
                                 isFirstBatch = false;
                             }
@@ -132,7 +132,6 @@ namespace FilmKirala.Report.Api.Services
                         lastId = (int)movies.Last().Id;
                     }
 
-                    // Job'ı Completed olarak işaretle + dosya yolunu kaydet
                     using (MiniProfiler.Current?.Step("DB: Job Durumu Güncelleniyor"))
                     {
                         var reportJob = await db.ReportJobs.FirstOrDefaultAsync(j => j.JobId == jobId);
@@ -143,7 +142,6 @@ namespace FilmKirala.Report.Api.Services
                         }
                     }
 
-                    // Bildirim kaydı
                     using (MiniProfiler.Current?.Step("DB: Bildirim Kaydı Atılıyor"))
                     {
                         var notification = new NotificationLog(
@@ -166,7 +164,6 @@ namespace FilmKirala.Report.Api.Services
             }
         }
 
-        // DB'de Completed ve dosya varsa byte[] döner
         public async Task<(bool IsReady, byte[]? FileBytes, string? FileName)> GetReportFileAsync(string jobId)
         {
             var job = await _context.ReportJobs.FirstOrDefaultAsync(j => j.JobId == jobId);
@@ -188,7 +185,7 @@ namespace FilmKirala.Report.Api.Services
             }
         }
 
-        // DB'deki job durumunu string döner
+        // DB'deki job durumunu string olarak dönüyoruz.
         public async Task<string> GetJobStatusAsync(string jobId)
         {
             var job = await _context.ReportJobs.FirstOrDefaultAsync(j => j.JobId == jobId);

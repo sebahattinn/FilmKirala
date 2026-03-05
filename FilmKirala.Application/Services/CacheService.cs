@@ -22,13 +22,12 @@ namespace FilmKirala.Infrastructure.Services
             await cache.SetStringAsync(key, JsonSerializer.Serialize(value), options);
         }
 
-   
         public async Task RemoveAsync(string key) => await cache.RemoveAsync(key);
 
         public async Task RemoveByPrefixAsync(string prefix)
         {
             
-            await Task.CompletedTask;
+            await Task.CompletedTask;                                                    
         }
     }
 }

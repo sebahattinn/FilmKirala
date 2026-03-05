@@ -1,8 +1,6 @@
-﻿using FilmKirala.Domain.Enums;
-
-namespace FilmKirala.Application.DTOs
+﻿namespace FilmKirala.Application.DTOs
 {
-    public record RentRequestDto(int MovieId, DurationType DurationType, int Quantity = 1);
+    public record RentRequestDto(int MovieId, int RentalPricingId, int Quantity = 1);
 
     public record RentResponseDto(
         bool Success,

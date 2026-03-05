@@ -14,7 +14,7 @@ public class ReportBackgroundWorker : BackgroundService
     private readonly ILogger<ReportBackgroundWorker> _logger;
     private readonly TimeSpan _pollInterval = TimeSpan.FromSeconds(5);
     private readonly SemaphoreSlim _semaphore = new SemaphoreSlim(3);
-    private int _processedCount = 0; // Toplam işlenen rapor sayacı
+    private int _processedCount = 0;                                 // Toplam işlenen rapor sayacı
 
     public ReportBackgroundWorker(IServiceScopeFactory scopeFactory, ILogger<ReportBackgroundWorker> logger)
     {
@@ -28,9 +28,9 @@ public class ReportBackgroundWorker : BackgroundService
 
         while (!stoppingToken.IsCancellationRequested)
         {
-            try                      // dragonfile, gratan mı grafan mı ne garnet cassandra  lokalden Jmatter yapıyormuş Jmatter'ı kubernetes'a atıyoruz araya network girmiyo daha da iyi oluyo
+            try                      
             {
-                // Heartbeat logu: Sistem yaşıyor mu görelim
+                
                 _logger.LogDebug("[HEARTBEAT] {Time} - Bekleyen iş aranıyor... (Active Slots: {Slots}/3)",
                     DateTime.Now.ToString("HH:mm:ss"), 3 - _semaphore.CurrentCount);
 
@@ -57,7 +57,7 @@ public class ReportBackgroundWorker : BackgroundService
 
         if (pendingJob == null) return;
 
-        // İşi kaptık!
+        
         _logger.LogWarning("[NEW JOB]  Bekleyen rapor yakalandı! JobId: {JobId}", pendingJob.JobId);
 
         pendingJob.MarkAsProcessing();
@@ -66,7 +66,6 @@ public class ReportBackgroundWorker : BackgroundService
         var jobId = pendingJob.JobId;
         var isCsv = pendingJob.IsCsv;
 
-        // Thread Limiti Kontrolü
         if (_semaphore.CurrentCount == 0)
         {
             _logger.LogInformation("[QUEUED]  Tüm threadler dolu. {JobId} kuyrukta bekliyor...", jobId);

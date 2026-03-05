@@ -31,6 +31,7 @@ namespace FilmKirala.Application.DTOs
         [Key(0)] public DurationType DurationType { get; init; }
         [Key(1)] public int DurationValue { get; init; }
         [Key(2)] public int Price { get; init; }
+        [Key(3)] public int Id { get; init; }
     }
 
     [MessagePackObject]

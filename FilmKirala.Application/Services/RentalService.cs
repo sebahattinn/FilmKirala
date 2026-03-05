@@ -22,8 +22,10 @@ namespace FilmKirala.Application.Services
             var movie = await unitOfWork.Movies.GetMovieWithDetailsAsync(request.MovieId)
                          ?? throw new KeyNotFoundException("Film bulunamadı.");
 
-            var pricing = movie.RentalPricings.FirstOrDefault(p => p.DurationType == request.DurationType)
-                           ?? throw new InvalidOperationException("Bu kiralama seçeneği mevcut değil.");
+            // Pricing ID'ye göre buluyoruz — kullanıcı fiyatı manipüle edemez, DB'den doğruluyoruz
+            // Aynı zamanda bu pricing'in gerçekten o filme ait olup olmadığını garanti etmiş oluyoruz
+            var pricing = movie.RentalPricings.FirstOrDefault(p => p.Id == request.RentalPricingId)
+                           ?? throw new InvalidOperationException("Geçersiz fiyatlandırma seçeneği.");
 
             // Stok yeterliliği (quantity kadar kopya var mı?)
             if (movie.Stock < request.Quantity)
