@@ -6,7 +6,7 @@ using FilmKirala.Domain.Entity;
 using FilmKirala.Domain.Enums;
 using FilmKirala.Application.DTOs;
 using FilmKirala.Application.Interfaces;
-using FilmKirala.Application.Interfaces.Services; 
+using FilmKirala.Application.Interfaces.Services;
 using Moq;
 using Xunit;
 
@@ -28,20 +28,23 @@ namespace FilmKirala.Test.IntegrationTests
             using var context = GetUniqueDbContext();
             var uow = new UnitOfWork(context, new MovieRepository(context), new UserRepository(context));
             var busMock = new Mock<IBusService>();
-            var cacheMock = new Mock<ICacheService>(); 
+            var cacheMock = new Mock<ICacheService>();
 
-            //  FIX: cacheMock.Object dördüncü parametre olarak eklendi
             var rentalService = new RentalService(uow, null!, busMock.Object, cacheMock.Object);
 
             var user = new User("PoorUser", "poor@test.com", "h", "s", 100, Roles.User);
             var movie = new Movie("Expensive Film", "Desc", "Genre", 10, true);
+
+            // Pricing ekliyoruz
             movie.AddRentalPricing(DurationType.Günlük, 1, 500);
 
             await context.Users.AddAsync(user);
             await context.Movies.AddAsync(movie);
-            await uow.CompleteAsync();
+            await uow.CompleteAsync(); // ID'ler oluştu
 
-            var rentRequest = new RentRequestDto(movie.Id, DurationType.Günlük, 1);
+            // FIX: PricingId (int) gönderiyoruz
+            var pricingId = movie.RentalPricings.First().Id;
+            var rentRequest = new RentRequestDto(movie.Id, pricingId);
 
             await Assert.ThrowsAsync<InvalidOperationException>(() => rentalService.RentMovieAsync(rentRequest, user.Id));
         }
@@ -52,9 +55,8 @@ namespace FilmKirala.Test.IntegrationTests
             using var context = GetUniqueDbContext();
             var uow = new UnitOfWork(context, new MovieRepository(context), new UserRepository(context));
             var busMock = new Mock<IBusService>();
-            var cacheMock = new Mock<ICacheService>(); 
+            var cacheMock = new Mock<ICacheService>();
 
-            //  FIX: cacheMock.Object dördüncü parametre olarak eklendi
             var rentalService = new RentalService(uow, null!, busMock.Object, cacheMock.Object);
 
             var user = new User("StockTest", "stock@test.com", "h", "s", 1000, Roles.User);
@@ -65,7 +67,9 @@ namespace FilmKirala.Test.IntegrationTests
             await context.Movies.AddAsync(movie);
             await uow.CompleteAsync();
 
-            var rentRequest = new RentRequestDto(movie.Id, DurationType.Günlük, 1);
+            // FIX: PricingId (int) gönderiyoruz
+            var pricingId = movie.RentalPricings.First().Id;
+            var rentRequest = new RentRequestDto(movie.Id, pricingId);
 
             await Assert.ThrowsAsync<InvalidOperationException>(() => rentalService.RentMovieAsync(rentRequest, user.Id));
         }
@@ -76,20 +80,24 @@ namespace FilmKirala.Test.IntegrationTests
             using var context = GetUniqueDbContext();
             var uow = new UnitOfWork(context, new MovieRepository(context), new UserRepository(context));
             var busMock = new Mock<IBusService>();
-            var cacheMock = new Mock<ICacheService>(); 
+            var cacheMock = new Mock<ICacheService>();
 
-            //  FIX: cacheMock.Object dördüncü parametre olarak eklendi
             var rentalService = new RentalService(uow, null!, busMock.Object, cacheMock.Object);
 
             var user = new User("Tester", "test@test.com", "h", "s", 1000, Roles.User);
             var movie = new Movie("Matrix", "Desc", "Sci-Fi", 10, true);
-            movie.AddRentalPricing(DurationType.Günlük, 1, 50);
+
+            // 2 günlük pricing oluşturuyoruz
+            movie.AddRentalPricing(DurationType.Günlük, 2, 50);
 
             await context.Users.AddAsync(user);
             await context.Movies.AddAsync(movie);
             await uow.CompleteAsync();
 
-            var rentRequest = new RentRequestDto(movie.Id, DurationType.Günlük, 2);
+            // FIX: PricingId (int) gönderiyoruz
+            var pricingId = movie.RentalPricings.First().Id;
+            var rentRequest = new RentRequestDto(movie.Id, pricingId);
+
             var result = await rentalService.RentMovieAsync(rentRequest, user.Id);
 
             Assert.True(result.RentalEndDate > DateTime.UtcNow.AddDays(1));

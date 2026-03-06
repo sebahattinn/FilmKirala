@@ -117,16 +117,14 @@ namespace FilmKirala.Report.Api.Services
 
                             if (isFirstBatch)
                             {
-                                // İlk partide dosyayı sıfırdan oluşturur. MiniExcel Dosyasını 
                                 await MiniExcel.SaveAsAsync(fullPath, currentBatchRows, excelType: excelType);
                                 isFirstBatch = false;
                             }
                             else
                             {
-                                // Sonraki partilerde mevcut sayfanın (Sheet1) altına ekleme yapar
                                 await MiniExcel.InsertAsync(fullPath, currentBatchRows, sheetName: "Sheet1", excelType: excelType);
                             }
-                        } 
+                        }
 
                         processedCount += movies.Count;
                         lastId = (int)movies.Last().Id;
@@ -142,18 +140,20 @@ namespace FilmKirala.Report.Api.Services
                         }
                     }
 
+                    // --- DÜZELTİLEN KISIM BURASI ---
                     using (MiniProfiler.Current?.Step("DB: Bildirim Kaydı Atılıyor"))
                     {
+                        // Yeni Constructor: Sadece 4 temel parametre veriyoruz.
                         var notification = new NotificationLog(
                             userEmail: "admin@filmkirala.com",
                             subject: "Rapor Hazır",
                             message: $"Rapor bitti. JobId: {jobId} | Süre: {sw.Elapsed.TotalSeconds:F1}s",
-                            isSent: false,
-                            createdAt: DateTime.Now,
-                            sentAt: DateTime.Now,
-                            errorMessage: string.Empty,
                             type: isCsv ? "CSV" : "XLSX"
                         );
+
+                        // Rapor hazır olduğuna göre durumu "Sent" (Gönderildi) olarak işaretleyebiliriz.
+                        notification.MarkAsSent();
+
                         db.NotificationLogs.Add(notification);
                         await db.SaveChangesAsync();
                     }

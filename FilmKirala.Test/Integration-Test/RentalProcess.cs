@@ -6,9 +6,10 @@ using FilmKirala.Domain.Entity;
 using FilmKirala.Domain.Enums;
 using FilmKirala.Application.DTOs;
 using FilmKirala.Application.Interfaces;
-using FilmKirala.Application.Interfaces.Services; 
+using FilmKirala.Application.Interfaces.Services;
 using Moq;
 using Xunit;
+using System.Linq;
 
 namespace FilmKirala.Test.IntegrationTests
 {
@@ -28,20 +29,23 @@ namespace FilmKirala.Test.IntegrationTests
             using var context = GetDbContext();
             var uow = new UnitOfWork(context, new MovieRepository(context), new UserRepository(context));
             var busMock = new Mock<IBusService>();
-            var cacheMock = new Mock<ICacheService>(); 
+            var cacheMock = new Mock<ICacheService>();
 
-            //  FIX: 4 parametreye güncellendi
             var service = new RentalService(uow, null!, busMock.Object, cacheMock.Object);
 
             var user = new User("Seba", "test@test.com", "h", "s", 100, Roles.User);
             var movie = new Movie("Batman", "Desc", "Action", 5, true);
-            movie.AddRentalPricing(DurationType.Günlük, 1, 20);
+
+            // Fiyatlandırma ekle ve kaydet ki ID oluşsun
+            movie.AddRentalPricing(DurationType.Günlük, 1, 150); // Bakiye 100, Fiyat 150
 
             await context.Users.AddAsync(user);
             await context.Movies.AddAsync(movie);
             await context.SaveChangesAsync();
 
-            var request = new RentRequestDto(movie.Id, DurationType.Günlük, 6);
+            // FIX: En son eklenen pricing ID'sini alıyoruz
+            var pricingId = movie.RentalPricings.First().Id;
+            var request = new RentRequestDto(movie.Id, pricingId);
 
             await Assert.ThrowsAsync<InvalidOperationException>(() => service.RentMovieAsync(request, user.Id));
 
@@ -55,20 +59,20 @@ namespace FilmKirala.Test.IntegrationTests
             using var context = GetDbContext();
             var uow = new UnitOfWork(context, new MovieRepository(context), new UserRepository(context));
             var busMock = new Mock<IBusService>();
-            var cacheMock = new Mock<ICacheService>(); 
+            var cacheMock = new Mock<ICacheService>();
 
-            //  FIX: 4 parametreye güncellendi
             var service = new RentalService(uow, null!, busMock.Object, cacheMock.Object);
 
             var user = new User("Seba", "test@test.com", "h", "s", 1000, Roles.User);
-            var movie = new Movie("Inception", "Desc", "Sci-Fi", 0, true);
+            var movie = new Movie("Inception", "Desc", "Sci-Fi", 0, true); // Stok 0
             movie.AddRentalPricing(DurationType.Günlük, 1, 50);
 
             await context.Users.AddAsync(user);
             await context.Movies.AddAsync(movie);
             await context.SaveChangesAsync();
 
-            var request = new RentRequestDto(movie.Id, DurationType.Günlük, 1);
+            var pricingId = movie.RentalPricings.First().Id;
+            var request = new RentRequestDto(movie.Id, pricingId);
 
             var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => service.RentMovieAsync(request, user.Id));
             Assert.Contains("stok", ex.Message.ToLower());
@@ -80,23 +84,23 @@ namespace FilmKirala.Test.IntegrationTests
             using var context = GetDbContext();
             var uow = new UnitOfWork(context, new MovieRepository(context), new UserRepository(context));
             var busMock = new Mock<IBusService>();
-            var cacheMock = new Mock<ICacheService>(); 
+            var cacheMock = new Mock<ICacheService>();
 
-            //  FIX: 4 parametreye güncellendi
             var service = new RentalService(uow, null!, busMock.Object, cacheMock.Object);
 
             var user = new User("Seba", "test@test.com", "h", "s", 500, Roles.User);
             var movie = new Movie("The Whale", "Desc", "Drama", 10, true);
-            movie.AddRentalPricing(DurationType.Günlük, 1, 30);
+            // Pricing eklemiyoruz
 
             await context.Users.AddAsync(user);
             await context.Movies.AddAsync(movie);
             await context.SaveChangesAsync();
 
-            var request = new RentRequestDto(movie.Id, DurationType.Haftalık, 1);
+            // Olmayan bir Pricing ID (999) gönderiyoruz
+            var request = new RentRequestDto(movie.Id, 999);
 
             var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => service.RentMovieAsync(request, user.Id));
-            Assert.Contains("mevcut değil", ex.Message.ToLower());
+            Assert.Contains("fiyat", ex.Message.ToLower());
         }
 
         [Fact]
@@ -105,25 +109,25 @@ namespace FilmKirala.Test.IntegrationTests
             using var context = GetDbContext();
             var uow = new UnitOfWork(context, new MovieRepository(context), new UserRepository(context));
             var busMock = new Mock<IBusService>();
-            var cacheMock = new Mock<ICacheService>(); 
+            var cacheMock = new Mock<ICacheService>();
 
-            //  FIX: 4 parametreye güncellendi
             var service = new RentalService(uow, null!, busMock.Object, cacheMock.Object);
 
             var user = new User("Seba", "test@test.com", "h", "s", 200, Roles.User);
             var movie = new Movie("Flash", "Desc", "Action", 5, true);
-            movie.AddRentalPricing(DurationType.Saatlik, 1, 10);
+            movie.AddRentalPricing(DurationType.Saatlik, 3, 10); // 3 Saatlik paket
 
             await context.Users.AddAsync(user);
             await context.Movies.AddAsync(movie);
             await context.SaveChangesAsync();
 
-            var request = new RentRequestDto(movie.Id, DurationType.Saatlik, 3);
+            var pricingId = movie.RentalPricings.First().Id;
+            var request = new RentRequestDto(movie.Id, pricingId);
 
             var result = await service.RentMovieAsync(request, user.Id);
 
             var expectedDate = DateTime.UtcNow.AddHours(3);
-            Assert.True((result.RentalEndDate - expectedDate).TotalMinutes < 1);
+            Assert.True(Math.Abs((result.RentalEndDate - expectedDate).TotalMinutes) < 1);
         }
     }
 }

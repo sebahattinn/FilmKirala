@@ -20,6 +20,7 @@ namespace FilmKirala.Infrastructure.Repositories
             Rentals = new GenericRepository<Rental>(_context);
             Reviews = new GenericRepository<Review>(_context);
             RentalPricings = new GenericRepository<RentalPricing>(_context);
+            NotificationLogs = new GenericRepository<NotificationLog>(_context); 
         }
 
         public IMovieRepository Movies { get; }
@@ -27,9 +28,10 @@ namespace FilmKirala.Infrastructure.Repositories
         public IGenericRepository<Rental> Rentals { get; }
         public IGenericRepository<Review> Reviews { get; }
         public IGenericRepository<RentalPricing> RentalPricings { get; }
+        public IGenericRepository<NotificationLog> NotificationLogs { get; } 
 
         public async Task<int> CompleteAsync() => await _context.SaveChangesAsync();
-      
+
         public void Dispose()
         {
             Dispose(true);

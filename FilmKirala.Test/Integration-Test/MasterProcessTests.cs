@@ -6,9 +6,11 @@ using FilmKirala.Domain.Entity;
 using FilmKirala.Domain.Enums;
 using FilmKirala.Application.DTOs;
 using FilmKirala.Application.Interfaces;
-using FilmKirala.Application.Interfaces.Services; 
+using FilmKirala.Application.Interfaces.Services;
 using Moq;
 using Xunit;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace FilmKirala.Test.IntegrationTests
 {
@@ -31,32 +33,26 @@ namespace FilmKirala.Test.IntegrationTests
             var busMock = new Mock<IBusService>();
             var cacheMock = new Mock<ICacheService>();
 
-            // 🚀 FIX: Dördüncü parametre olarak cacheMock.Object eklendi
             var rentalService = new RentalService(uow, null!, busMock.Object, cacheMock.Object);
             var reviewService = new ReviewService(uow);
-            var movieService = new MovieService(uow, null!);
 
             // 2. Kullanıcı Hazırla
             var user = new User("MasterSeba", "master@bursa.com", "hash", "salt", 500, Roles.User);
             await context.Users.AddAsync(user);
 
-            var createMovieDto = new CreateMovieDto
-            {
-                Title = "Inception Master",
-                Description = "Sci-Fi Epic",
-                Genre = "Action",
-                Stock = 10,
-                Pricings = new List<PricingDto> { new() { DurationType = DurationType.Günlük, DurationValue = 1, Price = 50 } }
-            };
+            // 3. Film ve Fiyatlandırma Ekleme
+            var movie = new Movie("Inception Master", "Sci-Fi Epic", "Action", 10, true);
+            // 2 günlük kiralama için 100 TL fiyat tanımlıyoruz (50*2 gibi düşün)
+            movie.AddRentalPricing(DurationType.Günlük, 2, 100);
 
-            // 3. Film Ekleme
-            var movie = new Movie(createMovieDto.Title, createMovieDto.Description, createMovieDto.Genre, createMovieDto.Stock, true);
-            movie.AddRentalPricing(DurationType.Günlük, 1, 50);
             await uow.Movies.AddAsync(movie);
-            await uow.CompleteAsync();
+            await uow.CompleteAsync(); // ID'lerin oluşması için şart
 
             // 4. Kiralama Testi
-            var rentRequest = new RentRequestDto(movie.Id, DurationType.Günlük, 2);
+            // FIX: Enum ve miktar yerine, veritabanında oluşan pricing ID'sini veriyoruz
+            var pricing = movie.RentalPricings.First();
+            var rentRequest = new RentRequestDto(movie.Id, pricing.Id);
+
             var rentalResult = await rentalService.RentMovieAsync(rentRequest, user.Id);
 
             // 5. Yorum Yapma Testi
@@ -67,7 +63,9 @@ namespace FilmKirala.Test.IntegrationTests
             var dbUser = await context.Users.FindAsync(user.Id);
             var dbMovie = await context.Movies.FindAsync(movie.Id);
 
-            Assert.Equal(400, dbUser!.WalletBalance); 
+            // Bakiye kontrolü: 500 - 100 = 400
+            Assert.Equal(400, dbUser!.WalletBalance);
+            // Stok kontrolü: 10 - 1 = 9
             Assert.Equal(9, dbMovie!.Stock);
             Assert.NotNull(rentalResult);
         }

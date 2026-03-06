@@ -3,13 +3,14 @@ using Xunit;
 using FilmKirala.Application.Services;
 using FilmKirala.Application.DTOs;
 using FilmKirala.Application.Interfaces;
-using FilmKirala.Application.Interfaces.Services; 
+using FilmKirala.Application.Interfaces.Services;
 using FilmKirala.Domain.Entity;
 using FilmKirala.Domain.Enums;
 using Microsoft.Extensions.Configuration;
 using FilmKirala.Infrastructure.Repositories;
 using FilmKirala.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
+using System.Collections.Generic;
 
 namespace FilmKirala.Test.UnitTests
 {
@@ -65,9 +66,9 @@ namespace FilmKirala.Test.UnitTests
         {
             var uowMock = new Mock<IUnitOfWork>();
             var busMock = new Mock<IBusService>();
-            var cacheMock = new Mock<ICacheService>(); 
+            var cacheMock = new Mock<ICacheService>();
 
-            //  FIX: cacheMock.Object dördüncü parametre olarak eklendi
+            // FIX: RentalService constructor (4 parametre)
             var rentalService = new RentalService(uowMock.Object, null!, busMock.Object, cacheMock.Object);
 
             var user = new User("Seba", "seba@test.com", "h", "s", 100, Roles.User);
@@ -76,7 +77,9 @@ namespace FilmKirala.Test.UnitTests
             // Filmi bilerek null bırakıyoruz ki KeyNotFoundException fırlasın
             uowMock.Setup(x => x.Movies.GetByIdAsync(It.IsAny<int>())).ReturnsAsync((Movie)null!);
 
-            var request = new RentRequestDto(999, DurationType.Günlük, 1);
+            // FIX: RentRequestDto artık (int MovieId, int RentalPricingId) alıyor. 
+            // Mock test olduğu için pricingId olarak herhangi bir sayı (örn: 1) verebiliriz.
+            var request = new RentRequestDto(999, 1);
 
             await Assert.ThrowsAsync<KeyNotFoundException>(() => rentalService.RentMovieAsync(request, user.Id));
         }
