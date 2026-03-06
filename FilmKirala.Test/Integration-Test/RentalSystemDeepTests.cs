@@ -9,6 +9,8 @@ using FilmKirala.Application.Interfaces;
 using FilmKirala.Application.Interfaces.Services;
 using Moq;
 using Xunit;
+using Microsoft.Extensions.Logging.Abstractions;
+using System.Linq;
 
 namespace FilmKirala.Test.IntegrationTests
 {
@@ -22,11 +24,21 @@ namespace FilmKirala.Test.IntegrationTests
             return new AppDbContext(options);
         }
 
+        // Helper metot: Tekrarlanan UoW kurulumunu merkezi hale getirdik
+        private IUnitOfWork CreateUnitOfWork(AppDbContext context)
+        {
+            var movieRepo = new MovieRepository(context, NullLogger<MovieRepository>.Instance);
+            var userRepo = new UserRepository(context, NullLogger<UserRepository>.Instance);
+            var loggerFactory = new NullLoggerFactory();
+
+            return new UnitOfWork(context, movieRepo, userRepo, loggerFactory);
+        }
+
         [Fact]
         public async Task Rental_InsufficientBalance_EdgeCase()
         {
             using var context = GetUniqueDbContext();
-            var uow = new UnitOfWork(context, new MovieRepository(context), new UserRepository(context));
+            var uow = CreateUnitOfWork(context);
             var busMock = new Mock<IBusService>();
             var cacheMock = new Mock<ICacheService>();
 
@@ -35,14 +47,12 @@ namespace FilmKirala.Test.IntegrationTests
             var user = new User("PoorUser", "poor@test.com", "h", "s", 100, Roles.User);
             var movie = new Movie("Expensive Film", "Desc", "Genre", 10, true);
 
-            // Pricing ekliyoruz
             movie.AddRentalPricing(DurationType.Günlük, 1, 500);
 
             await context.Users.AddAsync(user);
             await context.Movies.AddAsync(movie);
-            await uow.CompleteAsync(); // ID'ler oluştu
+            await uow.CompleteAsync();
 
-            // FIX: PricingId (int) gönderiyoruz
             var pricingId = movie.RentalPricings.First().Id;
             var rentRequest = new RentRequestDto(movie.Id, pricingId);
 
@@ -53,7 +63,7 @@ namespace FilmKirala.Test.IntegrationTests
         public async Task Rental_StockOut_EdgeCase()
         {
             using var context = GetUniqueDbContext();
-            var uow = new UnitOfWork(context, new MovieRepository(context), new UserRepository(context));
+            var uow = CreateUnitOfWork(context);
             var busMock = new Mock<IBusService>();
             var cacheMock = new Mock<ICacheService>();
 
@@ -67,7 +77,6 @@ namespace FilmKirala.Test.IntegrationTests
             await context.Movies.AddAsync(movie);
             await uow.CompleteAsync();
 
-            // FIX: PricingId (int) gönderiyoruz
             var pricingId = movie.RentalPricings.First().Id;
             var rentRequest = new RentRequestDto(movie.Id, pricingId);
 
@@ -78,7 +87,7 @@ namespace FilmKirala.Test.IntegrationTests
         public async Task Rental_Duration_Calculation_Verification()
         {
             using var context = GetUniqueDbContext();
-            var uow = new UnitOfWork(context, new MovieRepository(context), new UserRepository(context));
+            var uow = CreateUnitOfWork(context);
             var busMock = new Mock<IBusService>();
             var cacheMock = new Mock<ICacheService>();
 
@@ -87,14 +96,12 @@ namespace FilmKirala.Test.IntegrationTests
             var user = new User("Tester", "test@test.com", "h", "s", 1000, Roles.User);
             var movie = new Movie("Matrix", "Desc", "Sci-Fi", 10, true);
 
-            // 2 günlük pricing oluşturuyoruz
             movie.AddRentalPricing(DurationType.Günlük, 2, 50);
 
             await context.Users.AddAsync(user);
             await context.Movies.AddAsync(movie);
             await uow.CompleteAsync();
 
-            // FIX: PricingId (int) gönderiyoruz
             var pricingId = movie.RentalPricings.First().Id;
             var rentRequest = new RentRequestDto(movie.Id, pricingId);
 

@@ -29,6 +29,8 @@ services:
       - GRAYLOG_ROOT_PASSWORD_SHA2=8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918
       - GRAYLOG_HTTP_EXTERNAL_URI=http://localhost:9000/
       - GRAYLOG_ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+      - GRAYLOG_ROOT_TIMEZONE=Europe/Istanbul
+      - GRAYLOG_USER_TIMEZONE=Europe/Istanbul
     entrypoint: /usr/bin/tini -- /docker-entrypoint.sh
     networks:
       - graylog
@@ -53,7 +55,6 @@ services:
     networks:
       - graylog
     restart: always
-
 
   nginx_gateway:
     image: nginx:latest

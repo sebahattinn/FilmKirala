@@ -1,7 +1,9 @@
-﻿using System.Linq.Expressions;
+﻿using System.Diagnostics;
+using System.Linq.Expressions;
 using FilmKirala.Application.Interfaces.Repositories;
 using FilmKirala.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace FilmKirala.Infrastructure.Repositories
 {
@@ -9,29 +11,51 @@ namespace FilmKirala.Infrastructure.Repositories
     {
         protected readonly AppDbContext _context;
         private readonly DbSet<T> _dbSet;
+        private readonly ILogger<GenericRepository<T>> _logger; 
 
-        public GenericRepository(AppDbContext context)
+        public GenericRepository(AppDbContext context, ILogger<GenericRepository<T>> logger)
         {
             _context = context;
             _dbSet = context.Set<T>();
+            _logger = logger;
         }
 
         public async Task<IEnumerable<T>> GetAllAsync() => await _dbSet.AsNoTracking().ToListAsync();
 
         public async Task<IEnumerable<T>> GetPagedAsync(int page, int pageSize, Expression<Func<T, bool>>? predicate = null)
         {
-            IQueryable<T> query = _dbSet.AsNoTracking();
+            var sw = Stopwatch.StartNew();
+            var entityName = typeof(T).Name;
 
-            if (predicate != null)
+            _logger.LogInformation("Pagination başladı: {EntityName}, Sayfa: {Page}, Boyut: {PageSize}", entityName, page, pageSize);
+
+            try
             {
-                query = query.Where(predicate);
-            }
+                IQueryable<T> query = _dbSet.AsNoTracking();
 
-            return await query
-                        .OrderByDescending(x => EF.Property<int>(x, "Id"))
-                        .Skip((page - 1) * pageSize)
-                        .Take(pageSize)
-                        .ToListAsync();
+                if (predicate != null)
+                {
+                    query = query.Where(predicate);
+                }
+
+                var result = await query
+                            .OrderByDescending(x => EF.Property<object>(x, "Id")) 
+                            .Skip((page - 1) * pageSize)
+                            .Take(pageSize)
+                            .ToListAsync();
+
+                sw.Stop();
+                _logger.LogInformation("Pagination başarıyla tamamlandı: {EntityName}. Süre: {Elapsed}ms, Kayıt Sayısı: {Count}",
+                    entityName, sw.ElapsedMilliseconds, result.Count);
+
+                return result;
+            }
+            catch (Exception ex)
+            {
+                sw.Stop();
+                _logger.LogError(ex, "Pagination HATASI! {EntityName} tablosunda sorgu {Elapsed}ms sonra patladı.", entityName, sw.ElapsedMilliseconds);
+                throw; 
+            }
         }
 
         public async Task AddAsync(T entity) => await _dbSet.AddAsync(entity);

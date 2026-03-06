@@ -11,6 +11,7 @@ using FilmKirala.Infrastructure.Repositories;
 using FilmKirala.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using System.Collections.Generic;
+using Microsoft.Extensions.Logging.Abstractions; 
 
 namespace FilmKirala.Test.UnitTests
 {
@@ -28,7 +29,7 @@ namespace FilmKirala.Test.UnitTests
         public async Task GenericRepository_AllMethods_ShouldBeCovered()
         {
             using var context = GetDbContext();
-            var repo = new GenericRepository<User>(context);
+            var repo = new GenericRepository<User>(context, NullLogger<GenericRepository<User>>.Instance);
             var user = new User("RepoTest", "repo@test.com", "h", "s", 100, Roles.User);
 
             await repo.AddAsync(user);
@@ -68,17 +69,13 @@ namespace FilmKirala.Test.UnitTests
             var busMock = new Mock<IBusService>();
             var cacheMock = new Mock<ICacheService>();
 
-            // FIX: RentalService constructor (4 parametre)
             var rentalService = new RentalService(uowMock.Object, null!, busMock.Object, cacheMock.Object);
 
             var user = new User("Seba", "seba@test.com", "h", "s", 100, Roles.User);
             uowMock.Setup(x => x.Users.GetByIdAsync(It.IsAny<int>())).ReturnsAsync(user);
 
-            // Filmi bilerek null bırakıyoruz ki KeyNotFoundException fırlasın
             uowMock.Setup(x => x.Movies.GetByIdAsync(It.IsAny<int>())).ReturnsAsync((Movie)null!);
 
-            // FIX: RentRequestDto artık (int MovieId, int RentalPricingId) alıyor. 
-            // Mock test olduğu için pricingId olarak herhangi bir sayı (örn: 1) verebiliriz.
             var request = new RentRequestDto(999, 1);
 
             await Assert.ThrowsAsync<KeyNotFoundException>(() => rentalService.RentMovieAsync(request, user.Id));

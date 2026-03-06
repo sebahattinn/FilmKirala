@@ -2,12 +2,14 @@
 using FilmKirala.Domain.Entity;
 using FilmKirala.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace FilmKirala.Infrastructure.Repositories
 {
     public class UserRepository : GenericRepository<User>, IUserRepository
     {
-        public UserRepository(AppDbContext context) : base(context)
+        
+        public UserRepository(AppDbContext context, ILogger<UserRepository> logger) : base(context, logger)
         {
         }
 
@@ -16,11 +18,10 @@ namespace FilmKirala.Infrastructure.Repositories
             return await _context.Users.FirstOrDefaultAsync(u => u.Email == email);
         }
 
-       
         public async Task<User?> GetByRefreshTokenAsync(string refreshToken)
         {
             return await _context.Users
-                .Include(u => u.RefreshTokens) // Token listesini de çekmeyince patlatıyor programı.
+                .Include(u => u.RefreshTokens) 
                 .FirstOrDefaultAsync(u => u.RefreshTokens.Any(t => t.Token == refreshToken));
         }
     }

@@ -10,6 +10,7 @@ using FilmKirala.Application.Interfaces.Services;
 using Moq;
 using Xunit;
 using System.Linq;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace FilmKirala.Test.IntegrationTests
 {
@@ -23,11 +24,20 @@ namespace FilmKirala.Test.IntegrationTests
             return new AppDbContext(options);
         }
 
+        private UnitOfWork CreateUnitOfWork(AppDbContext context)
+        {
+            var movieRepo = new MovieRepository(context, NullLogger<MovieRepository>.Instance);
+            var userRepo = new UserRepository(context, NullLogger<UserRepository>.Instance);
+            var loggerFactory = new NullLoggerFactory();
+
+            return new UnitOfWork(context, movieRepo, userRepo, loggerFactory);
+        }
+
         [Fact]
         public async Task Rental_EdgeCase_InsufficientBalance_ShouldRollbackAndThrow()
         {
             using var context = GetDbContext();
-            var uow = new UnitOfWork(context, new MovieRepository(context), new UserRepository(context));
+            var uow = CreateUnitOfWork(context);
             var busMock = new Mock<IBusService>();
             var cacheMock = new Mock<ICacheService>();
 
@@ -36,14 +46,12 @@ namespace FilmKirala.Test.IntegrationTests
             var user = new User("Seba", "test@test.com", "h", "s", 100, Roles.User);
             var movie = new Movie("Batman", "Desc", "Action", 5, true);
 
-            // Fiyatlandırma ekle ve kaydet ki ID oluşsun
-            movie.AddRentalPricing(DurationType.Günlük, 1, 150); // Bakiye 100, Fiyat 150
+            movie.AddRentalPricing(DurationType.Günlük, 1, 150);
 
             await context.Users.AddAsync(user);
             await context.Movies.AddAsync(movie);
             await context.SaveChangesAsync();
 
-            // FIX: En son eklenen pricing ID'sini alıyoruz
             var pricingId = movie.RentalPricings.First().Id;
             var request = new RentRequestDto(movie.Id, pricingId);
 
@@ -57,14 +65,14 @@ namespace FilmKirala.Test.IntegrationTests
         public async Task Rental_EdgeCase_OutOfStock_ShouldThrow()
         {
             using var context = GetDbContext();
-            var uow = new UnitOfWork(context, new MovieRepository(context), new UserRepository(context));
+            var uow = CreateUnitOfWork(context);
             var busMock = new Mock<IBusService>();
             var cacheMock = new Mock<ICacheService>();
 
             var service = new RentalService(uow, null!, busMock.Object, cacheMock.Object);
 
             var user = new User("Seba", "test@test.com", "h", "s", 1000, Roles.User);
-            var movie = new Movie("Inception", "Desc", "Sci-Fi", 0, true); // Stok 0
+            var movie = new Movie("Inception", "Desc", "Sci-Fi", 0, true);
             movie.AddRentalPricing(DurationType.Günlük, 1, 50);
 
             await context.Users.AddAsync(user);
@@ -82,7 +90,7 @@ namespace FilmKirala.Test.IntegrationTests
         public async Task Rental_EdgeCase_UndefinedPricing_ShouldThrow()
         {
             using var context = GetDbContext();
-            var uow = new UnitOfWork(context, new MovieRepository(context), new UserRepository(context));
+            var uow = CreateUnitOfWork(context);
             var busMock = new Mock<IBusService>();
             var cacheMock = new Mock<ICacheService>();
 
@@ -90,13 +98,11 @@ namespace FilmKirala.Test.IntegrationTests
 
             var user = new User("Seba", "test@test.com", "h", "s", 500, Roles.User);
             var movie = new Movie("The Whale", "Desc", "Drama", 10, true);
-            // Pricing eklemiyoruz
 
             await context.Users.AddAsync(user);
             await context.Movies.AddAsync(movie);
             await context.SaveChangesAsync();
 
-            // Olmayan bir Pricing ID (999) gönderiyoruz
             var request = new RentRequestDto(movie.Id, 999);
 
             var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => service.RentMovieAsync(request, user.Id));
@@ -107,7 +113,7 @@ namespace FilmKirala.Test.IntegrationTests
         public async Task Rental_TimeCalculation_ShouldSetCorrectEndDate()
         {
             using var context = GetDbContext();
-            var uow = new UnitOfWork(context, new MovieRepository(context), new UserRepository(context));
+            var uow = CreateUnitOfWork(context);
             var busMock = new Mock<IBusService>();
             var cacheMock = new Mock<ICacheService>();
 
@@ -115,7 +121,7 @@ namespace FilmKirala.Test.IntegrationTests
 
             var user = new User("Seba", "test@test.com", "h", "s", 200, Roles.User);
             var movie = new Movie("Flash", "Desc", "Action", 5, true);
-            movie.AddRentalPricing(DurationType.Saatlik, 3, 10); // 3 Saatlik paket
+            movie.AddRentalPricing(DurationType.Saatlik, 3, 10);
 
             await context.Users.AddAsync(user);
             await context.Movies.AddAsync(movie);

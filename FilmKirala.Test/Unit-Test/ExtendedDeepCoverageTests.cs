@@ -8,6 +8,7 @@ using FilmKirala.Domain.Enums;
 using FilmKirala.Infrastructure.Repositories;
 using FilmKirala.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging.Abstractions; 
 
 namespace FilmKirala.Test.UnitTests
 {
@@ -27,13 +28,10 @@ namespace FilmKirala.Test.UnitTests
             var uowMock = new Mock<IUnitOfWork>();
             var movieService = new MovieService(uowMock.Object, null!);
 
-         
             uowMock.Setup(x => x.Movies.GetMovieWithDetailsAsync(It.IsAny<int>())).ReturnsAsync((Movie)null!);
 
-            // Film bulunamadığında KeyNotFoundException beklediğimizi tescilliyoruz
             await Assert.ThrowsAsync<KeyNotFoundException>(() => movieService.GetMovieByIdAsync(999));
 
-          
             uowMock.Verify(x => x.Movies.GetMovieWithDetailsAsync(999), Times.Once);
         }
 
@@ -54,7 +52,7 @@ namespace FilmKirala.Test.UnitTests
         public async Task Repository_ComplexQueries_Coverage()
         {
             using var context = GetInMemoryDbContext();
-            var userRepo = new UserRepository(context);
+            var userRepo = new UserRepository(context, NullLogger<UserRepository>.Instance);
             var user = new User("SebaRepo", "repo@test.com", "h", "s", 500, Roles.User);
 
             await userRepo.AddAsync(user);
