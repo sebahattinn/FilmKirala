@@ -13,7 +13,6 @@ namespace FilmKirala.Infrastructure.Persistence.Configurations
             builder.Property(m => m.Description).HasMaxLength(1000);
 
 
-            // Sadece RentalPricing) burada 
             builder.HasMany(m => m.RentalPricings)
                   .WithOne(rp => rp.Movie)
                   .HasForeignKey(rp => rp.MovieId)

@@ -9,7 +9,7 @@ namespace FilmKirala.Domain.Entity
         public int UserId { get; private set; }
         public int MovieId { get; private set; }
 
-        public User? User { get; private set; }    //navigation property yani gezinmek için nesne üretmem lazımdı
+        public User? User { get; private set; }    
         public Movie? Movie { get; private set; }
 
 
@@ -17,7 +17,7 @@ namespace FilmKirala.Domain.Entity
         public string Comment { get; private set; } = null!;
         public DateTime CreatedAt { get; private set; }
 
-        private Review() { }  //bu boş constractor EF için bu olmayınca mal oluyo
+        private Review() { }  
 
         public Review(int userId, int movieId, string comment, Rating rating)
         {

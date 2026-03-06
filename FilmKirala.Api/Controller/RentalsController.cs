@@ -8,7 +8,7 @@ namespace FilmKirala.Api.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    [AllowAnonymous] // Test sürecinde hızlı aksiyon için açık bıraktım
+    [AllowAnonymous] // Test sürecinde açık kalabilir ama UserId kontrolü artık sıkı.
     public class RentalsController : ControllerBase
     {
         private readonly IRentalService _rentalService;
@@ -17,24 +17,26 @@ namespace FilmKirala.Api.Controllers
         [HttpPost("rent")]
         public async Task<IActionResult> RentMovie([FromBody] RentRequestDto request)
         {
-            // Parse hatası durumunda 401 döner, test için 1'e düşer.
-            if (!int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
+            var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out var userId))
             {
-                userId = 1; // k6 stres testi için fallback
+               
+                return Unauthorized("Kiralama yapmak için giriş yapmalısınız.");
             }
 
             var result = await _rentalService.RentMovieAsync(request, userId);
-
-
             return Ok(result);
         }
 
         [HttpGet("my-rentals")]
         public async Task<IActionResult> GetMyRentals()
         {
-            if (!int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
+            var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out var userId))
             {
-                userId = 1; // k6 stres testi için fallback
+                return Unauthorized("Kiralamalarınızı görmek için giriş yapmalısınız.");
             }
 
             var rentals = await _rentalService.GetUserRentalsAsync(userId);

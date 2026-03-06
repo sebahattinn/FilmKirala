@@ -11,23 +11,32 @@ namespace FilmKirala.Application.Services
     public class RentalService(
         IUnitOfWork unitOfWork,
         IMapper mapper,
-        IBusService busService) : IRentalService
+        IBusService busService,
+        ICacheService cacheService) : IRentalService 
     {
         public async Task<RentResponseDto> RentMovieAsync(RentRequestDto request, int userId)
         {
             var user = await unitOfWork.Users.GetByIdAsync(userId)
-                        ?? throw new KeyNotFoundException("Kullanıcı bulunamadı.");
+                        ?? throw new KeyNotFoundException("User is not founded.");
 
             var movie = await unitOfWork.Movies.GetMovieWithDetailsAsync(request.MovieId)
-                         ?? throw new KeyNotFoundException("Film bulunamadı.");
+                         ?? throw new KeyNotFoundException("Movie is not founded.");
 
-            var pricing = movie.RentalPricings.FirstOrDefault(p => p.DurationType == request.DurationType)
-                           ?? throw new InvalidOperationException("Bu kiralama seçeneği mevcut değil.");
+            var pricing = movie.RentalPricings.FirstOrDefault(p => p.Id == request.RentalPricingId)
+                           ?? throw new InvalidOperationException("Geçersiz fiyatlandırma seçeneği.");
+
+            if (movie.Stock < request.Quantity)
+                throw new InvalidOperationException(
+                    $"'{movie.Title}' stok yetersiz! Mevcut: {movie.Stock}, İstenen: {request.Quantity}");
 
             int totalCost = pricing.Price * request.Quantity;
 
+            if (user.WalletBalance < totalCost)
+                throw new InvalidOperationException(
+                    $"Bakiye yetersiz! Gereken: {totalCost} TL, Mevcut: {user.WalletBalance} TL");
+
             user.DecreaseBalance(totalCost);
-            movie.DecreaseStock();
+            movie.DecreaseStock(request.Quantity);
 
             DateTime endDate = CalculateEndDate(pricing.DurationType, pricing.DurationValue, request.Quantity);
 
@@ -35,47 +44,70 @@ namespace FilmKirala.Application.Services
             rental.RentalsCreate(DateTime.UtcNow, endDate, totalCost, true, user, movie, pricing);
 
             await unitOfWork.Rentals.AddAsync(rental);
+
+         
             await unitOfWork.CompleteAsync();
 
-            await busService.PublishAsync(new FilmRentedEvent
+            //Remove the Cache 
+            await cacheService.RemoveAsync($"user_profile_{userId}");        
+
+            await busService.PublishAsync(new FilmRentedEvent               
             {
                 Email = user.Email,
-                Subject = "Film Kiralama Başarılı! ",
-                Message = $"'{movie.Title}' kiralandı. Tutar: {totalCost} TL"
+                Subject = "Movie Rented is succesfully!", 
+                Message = $"'{movie.Title}' Rented. Tutar: {totalCost} TL"          
             });
 
-            return new RentResponseDto(true, "Kiralama başarılı!", totalCost,
+            return new RentResponseDto(true, "Movie Rented is succesfully!", totalCost,
                 user.WalletBalance, endDate, pricing.DurationType.ToString(), request.Quantity,
-                $"{request.Quantity} {pricing.DurationType} Kiralama");
+                $"{request.Quantity} {pricing.DurationType} Rentals");
         }
 
         public async Task<IEnumerable<RentalListDto>> GetUserRentalsAsync(int userId)
         {
-            await CheckExpiredRentalsAsync();
             var rentals = await unitOfWork.Rentals.FindAsync(r => r.UserId == userId);
-            return mapper.Map<IEnumerable<RentalListDto>>(rentals);
+            var orderedRentals = rentals.OrderByDescending(r => r.Id).ToList();
+
+            return mapper.Map<IEnumerable<RentalListDto>>(orderedRentals);
         }
 
-        public async Task CheckExpiredRentalsAsync()
+        public async Task CheckExpiredRentalsAsync(int? userId = null)
         {
-            var expired = await unitOfWork.Rentals.FindAsync(r => r.Status && r.EndRentalDate <= DateTime.UtcNow);
-            foreach (var rental in expired)
-            {
-                rental.ExpireRental();
-                var movie = await unitOfWork.Movies.GetByIdAsync(rental.MovieId);
-                movie?.IncreaseStock();
-            }
+            var query = userId.HasValue
+                ? await unitOfWork.Rentals.FindAsync(r => r.UserId == userId.Value && r.Status && r.EndRentalDate <= DateTime.UtcNow)
+                : await unitOfWork.Rentals.FindAsync(r => r.Status && r.EndRentalDate <= DateTime.UtcNow);
 
-            if (expired.Any()) await unitOfWork.CompleteAsync();
+            var expired = query.ToList();
+
+            if (expired.Any())
+            {
+                var movieIds = expired.Select(r => r.MovieId).Distinct().ToList();
+                var movies = (await unitOfWork.Movies.FindAsync(m => movieIds.Contains(m.Id))).ToDictionary(m => m.Id);
+
+                foreach (var rental in expired)
+                {
+                    rental.ExpireRental();
+                    if (movies.TryGetValue(rental.MovieId, out var movie))
+                    {
+                        movie.IncreaseStock();
+                    }
+                }
+                await unitOfWork.CompleteAsync();
+            }
         }
+
+        public async Task CheckExpiredRentalsAsync() => await CheckExpiredRentalsAsync(null);
 
         private static DateTime CalculateEndDate(DurationType type, int val, int qty)
         {
             int total = val * qty;
             return type switch
             {
-                DurationType.Saatlik => DateTime.UtcNow.AddHours(total),
-                DurationType.Günlük => DateTime.UtcNow.AddDays(total),
+                DurationType.Saatlik  => DateTime.UtcNow.AddHours(total),
+                DurationType.Günlük   => DateTime.UtcNow.AddDays(total),
+                DurationType.Haftalık => DateTime.UtcNow.AddDays(total * 7),
+                DurationType.Aylık    => DateTime.UtcNow.AddMonths(total),
+                DurationType.Yıllık   => DateTime.UtcNow.AddYears(total),
                 _ => DateTime.UtcNow.AddDays(total)
             };
         }

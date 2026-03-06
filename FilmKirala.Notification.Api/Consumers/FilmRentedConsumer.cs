@@ -5,9 +5,9 @@ using MassTransit;
 using Microsoft.Extensions.Logging;
 
 namespace FilmKirala.Notification.Api.Consumers
-{
-    public class FilmRentedConsumer : IConsumer<FilmRentedEvent>
-    {
+{                                                                   // event-driven architecture
+    public class FilmRentedConsumer : IConsumer<FilmRentedEvent>     //MassTransit Consumerı
+    {                                                        //Film kiralandığında gelen event’i yakalar ve NotificationLogs tablosuna kayıt atar.
         private readonly NotificationAppDbContext _dbContext;
         private readonly ILogger<FilmRentedConsumer> _logger;
 
@@ -23,17 +23,14 @@ namespace FilmKirala.Notification.Api.Consumers
 
             try
             {
-                
                 var notificationLog = new NotificationLog(
                     userEmail: context.Message.Email,
                     subject: context.Message.Subject,
                     message: context.Message.Message,
-                    isSent: true,
-                    createdAt: DateTime.UtcNow,
-                    sentAt: DateTime.UtcNow,
-                    errorMessage: string.Empty, 
-                    type: "FilmRental" 
+                    type: "FilmRental"
                 );
+
+                notificationLog.MarkAsSent();
 
                 await _dbContext.NotificationLogs.AddAsync(notificationLog);
                 await _dbContext.SaveChangesAsync();

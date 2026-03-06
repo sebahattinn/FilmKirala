@@ -15,10 +15,15 @@ namespace FilmKirala.Api.Controllers
         {
             _movieService = movieService;
         }
+
         [HttpGet]
-        public async Task<IActionResult> GetAll()
+        public async Task<IActionResult> GetAll(
+            [FromQuery] string? search,
+            [FromQuery] string? genre,
+            [FromQuery] int page = 1,
+            [FromQuery] int pageSize = 20)
         {
-            var result = await _movieService.GetAllMoviesAsync();
+            var result = await _movieService.GetAllMoviesAsync(search, genre, page, pageSize);
             return Ok(result);
         }
 
@@ -29,8 +34,7 @@ namespace FilmKirala.Api.Controllers
             return Ok(result);
         }
 
-        // Rol bazlı film ekleme yapıyoruz ab
-        [Authorize(Roles ="Admin")]
+        [Authorize(Roles = "Admin")]
         [HttpPost]
         public async Task<IActionResult> Add([FromBody] CreateMovieDto request)
         {

@@ -13,7 +13,7 @@
 
         public User User { get; private set; } = null!;
 
-        private UserRefreshToken() { } // EF Core için
+        private UserRefreshToken() { } 
 
         public UserRefreshToken(string token, DateTime expiryTime, int userId)
         {

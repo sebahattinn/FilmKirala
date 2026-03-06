@@ -12,7 +12,7 @@ namespace FilmKirala.Application.Services
         public async Task AddReviewAsync(CreateReviewDto createReviewDto, int userId)
         {
             _ = await unitOfWork.Movies.GetByIdAsync(createReviewDto.MovieId)
-                ?? throw new KeyNotFoundException($"'{createReviewDto.MovieId}' ID'li film bulunamadı!");
+                ?? throw new KeyNotFoundException($"'{createReviewDto.MovieId}' ID'li film not founded!");
 
             var review = new Review(
                 userId,

@@ -23,8 +23,4 @@
     <ProjectReference Include="..\FilmKirala.Shared\FilmKirala.Shared.csproj" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Folder Include="Entities\" />
-  </ItemGroup>
-
 </Project>

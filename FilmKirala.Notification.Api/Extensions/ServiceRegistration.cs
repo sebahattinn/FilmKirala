@@ -8,7 +8,7 @@ namespace FilmKirala.Notification.Api.Extensions
     {
         public static void AddMassTransitRegistration(this IServiceCollection services)
         {
-            services.AddMassTransit(x =>
+            services.AddMassTransit(x =>   //MassTransit’i ve consumer’ları DI container’a ve RabbitMQ’ya kaydeder.Consumerlar bu sayede event dinleyebilir.
             {
                
                 x.AddConsumer<FilmRentedConsumer>();

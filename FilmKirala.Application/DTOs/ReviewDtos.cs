@@ -5,7 +5,7 @@ namespace FilmKirala.Application.DTOs
     [MessagePackObject]
     public record CreateReviewDto
     {
-        [Key(0)] public int MovieId { get; init; } //private set'ler uyarı verip duruyodu
+        [Key(0)] public int MovieId { get; init; } //private set'ler işimi zorlaştırdığı için inite döndüm
         [Key(1)] public required string Comment { get; init; }
         [Key(2)] public int Rating { get; init; }
     }

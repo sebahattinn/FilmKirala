@@ -1,4 +1,4 @@
-﻿using System.Text;
+using System.Text;
 using FilmKirala.Api.Filters;
 using FilmKirala.Api.Middlewares;
 using FilmKirala.Application.Interfaces;
@@ -9,6 +9,8 @@ using FilmKirala.Application.Services;
 using FilmKirala.Infrastructure.Persistence;
 using FilmKirala.Infrastructure.Repositories;
 using FilmKirala.Infrastructure.Services;
+using FilmKirala.Report.Api.Interfaces;
+using FilmKirala.Report.Api.Services;
 using FluentValidation;
 using FluentValidation.AspNetCore;
 using MassTransit;
@@ -19,13 +21,13 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
-using Serilog;                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          
+using Serilog;
 using Serilog.Sinks.Graylog;
 
-var builder = WebApplication.CreateBuilder(args);                              
-                                                                               
-// MessagePack Konfigürasyonu                                                    
-var mcOptions = MessagePackSerializerOptions.Standard 
+var builder = WebApplication.CreateBuilder(args);
+
+// MessagePack Konfigürasyonu
+var mcOptions = MessagePackSerializerOptions.Standard
     .WithResolver(CompositeResolver.Create(
         NativeGuidResolver.Instance,
         NativeDecimalResolver.Instance,
@@ -44,7 +46,7 @@ Log.Logger = new LoggerConfiguration()
     {
         HostnameOrAddress = "localhost",
         Port = 12201,
-        TransportType = Serilog.Sinks.Graylog.Core.Transport.TransportType.Udp   
+        TransportType = Serilog.Sinks.Graylog.Core.Transport.TransportType.Udp
     })
     .CreateLogger();
 builder.Host.UseSerilog();
@@ -71,7 +73,7 @@ builder.Services.AddControllers(options =>
 {
     options.Filters.Add<ValidationFilter>();
 });
- 
+
 // Veritabanı Bağlantısı
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlServer(configuration.GetConnectionString("DefaultConnection")));
@@ -124,7 +126,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidAudience = jwtSection["Audience"],
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey))
         };
-    });                                  
+    });
 
 builder.Services.AddAuthorization();
 builder.Services.AddEndpointsApiExplorer();
@@ -152,6 +154,17 @@ builder.Services.AddSwaggerGen(options =>
         }
     });
 });
+
+// MiniProfiler — Raporlama sorgularını profillemek için
+builder.Services.AddMemoryCache();
+builder.Services.AddMiniProfiler(options =>
+{
+    options.RouteBasePath = "/profiler";
+}).AddEntityFramework();
+
+builder.Services.AddScoped<IReportService, ReportService>();
+builder.Services.AddHostedService<ReportBackgroundWorker>();
+
 #endregion
 
 var app = builder.Build();
@@ -159,6 +172,8 @@ var app = builder.Build();
 #region PIPELINE
 app.UseSerilogRequestLogging();
 app.UseMiddleware<GlobalExceptionMiddleware>();
+
+app.UseMiniProfiler();
 
 if (app.Environment.IsDevelopment())
 {

@@ -11,6 +11,8 @@ namespace FilmKirala.Application.Interfaces.Services
 
         Task<AuthResponseDto> RefreshTokenAsync(RefreshTokenRequestDto request);
 
-        Task UpdateUserBalanceAsync(string email, int newBalance); //adminin bakiye güncellemesi için
+        Task UpdateUserBalanceAsync(string email, int newBalance); 
+
+        Task<AuthResponseDto> GetCurrentUserAsync(int userId); // For the WalletBalance Refreshing.
     }
 }

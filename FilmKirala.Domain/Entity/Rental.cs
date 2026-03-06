@@ -32,7 +32,7 @@ namespace FilmKirala.Domain.Entity
 
             // İlişkileri kuruyorum
             User = user;
-            UserId = user.Id; // ID'yi garantiye alıyoruz
+            UserId = user.Id; 
 
             Movie = movie;
             MovieId = movie.Id;

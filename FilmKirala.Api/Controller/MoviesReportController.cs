@@ -1,7 +1,7 @@
-﻿using FilmKirala.Report.Api.Interfaces;
+using FilmKirala.Report.Api.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 
-namespace FilmKirala.Report.Api.Controllers
+namespace FilmKirala.Api.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
@@ -12,9 +12,9 @@ namespace FilmKirala.Report.Api.Controllers
         public MoviesReportController(IReportService reportService) => _reportService = reportService;
 
         [HttpPost("export-background")]
-        public IActionResult ExportBackground([FromQuery] bool isCsv = false)
+        public async Task<IActionResult> ExportBackground([FromQuery] bool isCsv = false)
         {
-            var jobId = _reportService.EnqueueReport(isCsv);
+            var jobId = await _reportService.EnqueueReportAsync(isCsv);
             return Accepted(new { Status = "Hazırlanıyor", JobId = jobId, CheckStatusUrl = $"/api/MoviesReport/check-status/{jobId}" });
         }
 
@@ -29,15 +29,18 @@ namespace FilmKirala.Report.Api.Controllers
             return File(fileBytes!, contentType, fileName);
         }
 
-
         [HttpGet("check-status/{jobId}")]
         public async Task<IActionResult> CheckStatus(string jobId)
         {
-            var (isReady, _, _) = await _reportService.GetReportFileAsync(jobId);
+            var status = await _reportService.GetJobStatusAsync(jobId);
 
-            if (isReady) return Ok(new { Message = "Rapor hazır!", DownloadUrl = $"/api/MoviesReport/download/{jobId}" });
-
-            return Ok(new { Message = "Rapor hala hazırlanıyor... Hangfire Dashboard'u kontrol edebilirsiniz." });
+            return status switch
+            {
+                "Completed" => Ok(new { Status = "Completed", Message = "Rapor hazır!", DownloadUrl = $"/api/MoviesReport/download/{jobId}" }),
+                "Failed" => Ok(new { Status = "Failed", Message = "Rapor oluşturulurken bir hata oluştu." }),
+                "NotFound" => NotFound(new { Message = "Bu JobId ile bir rapor bulunamadı." }),
+                _ => Ok(new { Status = status, Message = "Rapor hazırlanıyor, lütfen bekleyin..." })
+            };
         }
 
         [HttpGet("summary")]

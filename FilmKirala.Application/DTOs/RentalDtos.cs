@@ -1,14 +1,12 @@
-﻿using FilmKirala.Domain.Enums;
-
-namespace FilmKirala.Application.DTOs
+﻿namespace FilmKirala.Application.DTOs
 {
-    public record RentRequestDto(int MovieId, DurationType DurationType, int Quantity = 1);
+    public record RentRequestDto(int MovieId, int RentalPricingId, int Quantity = 1);
 
     public record RentResponseDto(
         bool Success,
         string Message,
-        int TotalCost, // int devam
-        int RemainingBalance, // int devam
+        int TotalCost, 
+        int RemainingBalance, 
         DateTime RentalEndDate,
         string RentalType,
         int RentalDuration,
@@ -20,7 +18,7 @@ namespace FilmKirala.Application.DTOs
         public string MovieTitle { get; init; } = null!;
         public DateTime StartRentalDate { get; init; }
         public DateTime EndRentalDate { get; init; }
-        public int TotalPrice { get; init; } // int devam
+        public int TotalPrice { get; init; } 
         public bool Status { get; init; }
         public string RemainingTime => EndRentalDate > DateTime.UtcNow
             ? $"{(EndRentalDate - DateTime.UtcNow).Days} gün kaldı"

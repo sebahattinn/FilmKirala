@@ -4,6 +4,7 @@ using FilmKirala.Application.Interfaces;
 using FilmKirala.Application.Interfaces.Services;
 using FilmKirala.Domain.Entity;
 using FilmKirala.Domain.Enums;
+using Microsoft.EntityFrameworkCore;
 
 namespace FilmKirala.Application.Services
 {
@@ -18,10 +19,16 @@ namespace FilmKirala.Application.Services
             _mapper = mapper;
         }
 
-        public async Task<IEnumerable<MovieListDto>> GetAllMoviesAsync(int page = 1, int pageSize = 20)
+        public async Task<IEnumerable<MovieListDto>> GetAllMoviesAsync(string? search = null, string? genre = null, int page = 1, int pageSize = 20)
         {
-            // Sayfalama parametrelerini zorunlu hale getirdik
-            var movies = await _unitOfWork.Movies.GetPagedAsync(page, pageSize);
+            var searchTerm = search?.Trim();
+
+            var movies = await _unitOfWork.Movies.GetPagedAsync(
+                page,
+                pageSize,
+                predicate: m => (string.IsNullOrEmpty(searchTerm) || m.Title.StartsWith(searchTerm)) &&
+                                (string.IsNullOrEmpty(genre) || m.Genre == genre)
+            );
             return _mapper.Map<IEnumerable<MovieListDto>>(movies);
         }
 
@@ -29,13 +36,11 @@ namespace FilmKirala.Application.Services
         {
             var movie = await _unitOfWork.Movies.GetMovieWithDetailsAsync(id);
             if (movie == null) throw new KeyNotFoundException($"Film bulunamadı (ID: {id})");
-
             return _mapper.Map<MovieDetailDto>(movie);
         }
 
         public async Task AddMovieAsync(CreateMovieDto createMovieDto)
         {
-            //  Movie constructor parametre sırasını kontroledem
             var movie = new Movie(createMovieDto.Title, createMovieDto.Description, createMovieDto.Genre, createMovieDto.Stock, true);
 
             if (createMovieDto.Pricings != null)

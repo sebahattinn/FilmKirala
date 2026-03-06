@@ -11,7 +11,6 @@ namespace FilmKirala.Infrastructure.Persistence.Configurations
             builder.HasKey(rp => rp.Id);
 
             builder.Property(rp => rp.Price).IsRequired().HasPrecision(18, 2);
-            //  Para birimi olduğu için 18 basamak, 2 kuruş hanesi zorunlu
         }
     }
 }
