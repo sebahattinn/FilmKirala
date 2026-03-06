@@ -162,7 +162,6 @@ builder.Services.AddMiniProfiler(options =>
     options.RouteBasePath = "/profiler";
 }).AddEntityFramework();
 
-// Report Servisleri (eski Report.Api artık buraya entegre)
 builder.Services.AddScoped<IReportService, ReportService>();
 builder.Services.AddHostedService<ReportBackgroundWorker>();
 
@@ -174,7 +173,6 @@ var app = builder.Build();
 app.UseSerilogRequestLogging();
 app.UseMiddleware<GlobalExceptionMiddleware>();
 
-// MiniProfiler middleware — Swagger'dan önce gelmelidir
 app.UseMiniProfiler();
 
 if (app.Environment.IsDevelopment())

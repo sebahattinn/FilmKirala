@@ -21,7 +21,7 @@ namespace FilmKirala.Api.Controllers
 
             if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out var userId))
             {
-                // Artık fallback (ID = 1) yok! Kimlik yoksa işlem de yok.
+               
                 return Unauthorized("Kiralama yapmak için giriş yapmalısınız.");
             }
 

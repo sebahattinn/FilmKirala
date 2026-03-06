@@ -20,7 +20,7 @@ namespace FilmKirala.Api.Middlewares
             }
             catch (Exception ex)
             {
-                // Loglama burada merkezileşir
+                // Central Logging is here
                 Log.Error(ex, "Bir hata oluştu: {Message}", ex.Message);
 
                 var statusCode = ex switch
@@ -43,7 +43,6 @@ namespace FilmKirala.Api.Middlewares
             {
                 StatusCode = statusCode,
                 Message = exception.Message,
-                // buraya "Detail" veya "Timestamp" de eklenebilir.
             };
             return context.Response.WriteAsJsonAsync(response);
         }
