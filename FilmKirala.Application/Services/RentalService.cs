@@ -17,24 +17,20 @@ namespace FilmKirala.Application.Services
         public async Task<RentResponseDto> RentMovieAsync(RentRequestDto request, int userId)
         {
             var user = await unitOfWork.Users.GetByIdAsync(userId)
-                        ?? throw new KeyNotFoundException("Kullanıcı bulunamadı.");
+                        ?? throw new KeyNotFoundException("User is not founded.");
 
             var movie = await unitOfWork.Movies.GetMovieWithDetailsAsync(request.MovieId)
-                         ?? throw new KeyNotFoundException("Film bulunamadı.");
+                         ?? throw new KeyNotFoundException("Movie is not founded.");
 
-            // Pricing ID'ye göre buluyoruz — kullanıcı fiyatı manipüle edemez, DB'den doğruluyoruz
-            // Aynı zamanda bu pricing'in gerçekten o filme ait olup olmadığını garanti etmiş oluyoruz
             var pricing = movie.RentalPricings.FirstOrDefault(p => p.Id == request.RentalPricingId)
                            ?? throw new InvalidOperationException("Geçersiz fiyatlandırma seçeneği.");
 
-            // Stok yeterliliği (quantity kadar kopya var mı?)
             if (movie.Stock < request.Quantity)
                 throw new InvalidOperationException(
                     $"'{movie.Title}' stok yetersiz! Mevcut: {movie.Stock}, İstenen: {request.Quantity}");
 
             int totalCost = pricing.Price * request.Quantity;
 
-            // Bakiye kontrolü User.DecreaseBalance içinde de var ama önce explicit kontrol
             if (user.WalletBalance < totalCost)
                 throw new InvalidOperationException(
                     $"Bakiye yetersiz! Gereken: {totalCost} TL, Mevcut: {user.WalletBalance} TL");
@@ -50,21 +46,21 @@ namespace FilmKirala.Application.Services
             await unitOfWork.Rentals.AddAsync(rental);
 
          
-            await unitOfWork.CompleteAsync();   // save the db
+            await unitOfWork.CompleteAsync();
 
-           
-            await cacheService.RemoveAsync($"user_profile_{userId}");        //Remove the Cache 
+            //Remove the Cache 
+            await cacheService.RemoveAsync($"user_profile_{userId}");        
 
             await busService.PublishAsync(new FilmRentedEvent               
             {
                 Email = user.Email,
-                Subject = "Film Kiralama Başarılı!", 
-                Message = $"'{movie.Title}' kiralandı. Tutar: {totalCost} TL"          
+                Subject = "Movie Rented is succesfully!", 
+                Message = $"'{movie.Title}' Rented. Tutar: {totalCost} TL"          
             });
 
-            return new RentResponseDto(true, "Kiralama başarılı!", totalCost,
+            return new RentResponseDto(true, "Movie Rented is succesfully!", totalCost,
                 user.WalletBalance, endDate, pricing.DurationType.ToString(), request.Quantity,
-                $"{request.Quantity} {pricing.DurationType} Kiralama");
+                $"{request.Quantity} {pricing.DurationType} Rentals");
         }
 
         public async Task<IEnumerable<RentalListDto>> GetUserRentalsAsync(int userId)

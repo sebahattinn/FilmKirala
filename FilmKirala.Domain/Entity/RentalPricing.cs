@@ -12,7 +12,7 @@ namespace FilmKirala.Domain.Entity
 
         public Movie Movie { get; private set; } = null!;
 
-        private RentalPricing() { } // EF Core için
+        private RentalPricing() { } 
 
         public RentalPricing(DurationType durationType, int durationValue, int price, Movie movie)
         {

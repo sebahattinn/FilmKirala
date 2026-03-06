@@ -10,10 +10,10 @@ namespace FilmKirala.Report.Api.Services;
 
 public class ReportBackgroundWorker : BackgroundService
 {
-    private readonly IServiceScopeFactory _scopeFactory;
-    private readonly ILogger<ReportBackgroundWorker> _logger;
-    private readonly TimeSpan _pollInterval = TimeSpan.FromSeconds(5);
-    private readonly SemaphoreSlim _semaphore = new SemaphoreSlim(3);
+    private readonly IServiceScopeFactory _scopeFactory;                   // Buradaki kuyruk db tablosundaki pending olan job'lar
+    private readonly ILogger<ReportBackgroundWorker> _logger;             // Arka planda sürekli polling yapıyo bu sayfa ab.
+    private readonly TimeSpan _pollInterval = TimeSpan.FromSeconds(5);   // Worker Her 5 saniyede job var mı diye check ediyor 
+    private readonly SemaphoreSlim _semaphore = new SemaphoreSlim(3);  // maks 3 rapor aynı anda işlenebilir. Fazla gelirse kuyrukta bekler
     private int _processedCount = 0;                                 // Toplam işlenen rapor sayacı
 
     public ReportBackgroundWorker(IServiceScopeFactory scopeFactory, ILogger<ReportBackgroundWorker> logger)

@@ -10,9 +10,17 @@ namespace FilmKirala.Infrastructure.Services
 
         public async Task PublishAsync<T>(T message) where T : class
         {
-            
-            try { await _publishEndpoint.Publish(message); }
-            catch { /* Log atılabilir */ }
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+
+            try
+            {
+                await _publishEndpoint.Publish(message, cts.Token);
+            }
+            catch (Exception ex)
+            {
+
+                Console.WriteLine($"[RabbitMQ Error]: Mesaj gönderilemedi. Hata: {ex.Message}");
+            }
         }
     }
 }

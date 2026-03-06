@@ -2,7 +2,7 @@
 {
     public interface IReportService
     {
-        // Kullanıcı rapor istediğinde DB'ye Pending kaydı atar, JobId döner
+   
         Task<string> EnqueueReportAsync(bool isCsv);
 
         // BackgroundWorker tarafından çağrılır: asıl Excel/CSV üretim işi
@@ -11,7 +11,6 @@
         // Controller: rapor dosyasını döner (sadece Status=Completed ise)
         Task<(bool IsReady, byte[]? FileBytes, string? FileName)> GetReportFileAsync(string jobId);
 
-        // Controller: DB'deki iş durumunu string olarak döner
         Task<string> GetJobStatusAsync(string jobId);
 
         // Anlık özet ve export

@@ -85,7 +85,7 @@ public class AuthService(IUnitOfWork unitOfWork, IConfiguration configuration, I
 
     public async Task<AuthResponseDto> RefreshTokenAsync(RefreshTokenRequestDto request)
     {
-        // 1. Kullanıcıyı bul (Refresh token ile eşleşen kullanıcıyı DB'den çekiyoruz)
+        // Refresh token ile eşleşen kullanıcıyı DB'den çekiyorum
         var user = await unitOfWork.Users.GetByRefreshTokenAsync(request.RefreshToken);
 
         if (user == null)
@@ -95,11 +95,11 @@ public class AuthService(IUnitOfWork unitOfWork, IConfiguration configuration, I
         if (tokenRecord == null || !tokenRecord.IsActive)
             throw new UnauthorizedAccessException("Refresh token süresi dolmuş veya geçersiz.");
 
-        // 2. Yeni tokenları üret
+        // Yeni tokenları üret
         var newToken = CreateToken(user);
         var newRefreshToken = GenerateRefreshToken();
 
-        // 3. Mevcut token'ı iptal et ve yenisini ekle (Domain logic)
+        // Mevcut token'ı iptal et ve yenisini ekle
         tokenRecord.Revoke();
         user.AddRefreshToken(newRefreshToken, DateTime.UtcNow.AddDays(7));
 

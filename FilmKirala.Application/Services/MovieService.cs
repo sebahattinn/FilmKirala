@@ -23,24 +23,17 @@ namespace FilmKirala.Application.Services
         {
             var searchTerm = search?.Trim();
 
-            // ÖNEMLİ: GetPagedAsync içinde sıralamayı SQL tarafında yapacak bir yapı kurduk.
-            // Bu sayede 10 milyon veri içinden sadece ilgili 20 kayıt çekilirken indeks kullanılır.
             var movies = await _unitOfWork.Movies.GetPagedAsync(
                 page,
                 pageSize,
                 predicate: m => (string.IsNullOrEmpty(searchTerm) || m.Title.StartsWith(searchTerm)) &&
                                 (string.IsNullOrEmpty(genre) || m.Genre == genre)
             );
-
-            // Veriler zaten SQL'de ID'ye göre sıralı çekilmeli (Repo içinde düzelteceğiz), 
-            // ama burada mapper ile DTO'ya çevirip dönüyoruz.
             return _mapper.Map<IEnumerable<MovieListDto>>(movies);
         }
 
         public async Task<MovieDetailDto?> GetMovieByIdAsync(int id)
         {
-            // Detay sayfasında tracking maliyeti düşüktür ama performans için GetMovieWithDetailsAsync 
-            // içinde AsNoTracking() olması her zaman iyidir.
             var movie = await _unitOfWork.Movies.GetMovieWithDetailsAsync(id);
             if (movie == null) throw new KeyNotFoundException($"Film bulunamadı (ID: {id})");
             return _mapper.Map<MovieDetailDto>(movie);
@@ -62,7 +55,6 @@ namespace FilmKirala.Application.Services
 
         public async Task AddRentalPricingAsync(int movieId, DurationType durationType, int price)
         {
-            // Kiralama fiyatı ekleme operasyonu
             var movie = await _unitOfWork.Movies.GetByIdAsync(movieId);
             if (movie == null) throw new KeyNotFoundException("Film bulunamadı.");
 

@@ -27,8 +27,6 @@ namespace FilmKirala.Infrastructure.Repositories
                 query = query.Where(predicate);
             }
 
-            // MANTIĞI: SQL 10 milyon veride Skip/Take yaparken bir sıralama bekler.
-            // "Id" kolonuna göre tersten sıralıyoruz ki yeni filmler hep en üstte gelsin.
             return await query
                         .OrderByDescending(x => EF.Property<int>(x, "Id"))
                         .Skip((page - 1) * pageSize)

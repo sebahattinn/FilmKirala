@@ -20,7 +20,7 @@ namespace FilmKirala.Infrastructure.Repositories
         public async Task<User?> GetByRefreshTokenAsync(string refreshToken)
         {
             return await _context.Users
-                .Include(u => u.RefreshTokens) // Token listesini de çekmezsen patlarız
+                .Include(u => u.RefreshTokens) // Token listesini de çekmeyince patlatıyor programı.
                 .FirstOrDefaultAsync(u => u.RefreshTokens.Any(t => t.Token == refreshToken));
         }
     }
