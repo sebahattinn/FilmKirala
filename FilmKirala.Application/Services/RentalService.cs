@@ -1,4 +1,5 @@
-﻿using AutoMapper;
+﻿using System.Data;
+using AutoMapper;
 using FilmKirala.Application.DTOs;
 using FilmKirala.Application.Interfaces;
 using FilmKirala.Application.Interfaces.Services;
@@ -33,7 +34,7 @@ namespace FilmKirala.Application.Services
                     $"Geçersiz fiyatlandırma seçeneği (ID: {request.RentalPricingId}). " +
                     $"Bu film için mevcut fiyatlandırma ID'leri: [{existingPricingIds}]");
             }
-
+            
             if (movie.Stock < request.Quantity)
                 throw new InvalidOperationException(
                     $"'{movie.Title}' stok yetersiz! Mevcut: {movie.Stock}, İstenen: {request.Quantity}");
