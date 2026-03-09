@@ -5,6 +5,7 @@ using FilmKirala.Application.Interfaces.Services;
 using FilmKirala.Domain.Entity;
 using FilmKirala.Domain.Enums;
 using FilmKirala.Shared.Events;
+using Microsoft.Extensions.Logging;
 
 namespace FilmKirala.Application.Services
 {
@@ -75,7 +76,8 @@ namespace FilmKirala.Application.Services
             }
             catch (Exception)
             {
-                // Loglama gerekirse buraya: _logger.LogError("RabbitMQ Hatası");
+
+                
             }
 
             return new RentResponseDto(true, "Movie Rented is successfully!", totalCost,

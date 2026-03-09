@@ -34,6 +34,7 @@ namespace FilmKirala.Api.Middlewares
                 await HandleExceptionAsync(context, ex, statusCode);
             }
         }
+       
         private static Task HandleExceptionAsync(HttpContext context, Exception exception, int statusCode)
         {
             context.Response.ContentType = "application/json";
@@ -42,8 +43,10 @@ namespace FilmKirala.Api.Middlewares
             var response = new
             {
                 StatusCode = statusCode,
-                Message = exception.Message,
+                Message = exception.Message, // İşte burası bizim servis mesajını basacak yer
+                Detailed = exception.InnerException?.Message // Varsa iç hatayı da görelim
             };
+
             return context.Response.WriteAsJsonAsync(response);
         }
     }
