@@ -22,8 +22,16 @@ namespace FilmKirala.Application.Services
             var movie = await unitOfWork.Movies.GetMovieWithDetailsAsync(request.MovieId)
                          ?? throw new KeyNotFoundException("Movie is not founded.");
 
-            var pricing = movie.RentalPricings.FirstOrDefault(p => p.Id == request.RentalPricingId)
-                           ?? throw new InvalidOperationException("Geçersiz fiyatlandırma seçeneği.");
+            // Senior Dokunuşu: Hata aldığında sadece "Geçersiz" demek yerine mevcut ID'leri de fırlatıyoruz ki sorunu anlayalım.
+            var pricing = movie.RentalPricings.FirstOrDefault(p => p.Id == request.RentalPricingId);
+
+            if (pricing == null)
+            {
+                var existingPricingIds = string.Join(", ", movie.RentalPricings.Select(p => p.Id));
+                throw new InvalidOperationException(
+                    $"Geçersiz fiyatlandırma seçeneği (ID: {request.RentalPricingId}). " +
+                    $"Bu film için mevcut fiyatlandırma ID'leri: [{existingPricingIds}]");
+            }
 
             if (movie.Stock < request.Quantity)
                 throw new InvalidOperationException(
@@ -45,20 +53,32 @@ namespace FilmKirala.Application.Services
 
             await unitOfWork.Rentals.AddAsync(rental);
 
-         
             await unitOfWork.CompleteAsync();
 
-            //Remove the Cache 
-            await cacheService.RemoveAsync($"user_profile_{userId}");        
-
-            await busService.PublishAsync(new FilmRentedEvent               
+            try
             {
-                Email = user.Email,
-                Subject = "Movie Rented is succesfully!", 
-                Message = $"'{movie.Title}' Rented. Tutar: {totalCost} TL"          
-            });
+                await cacheService.RemoveAsync($"user_profile_{userId}");
+            }
+            catch (Exception)
+            {
+                // Loglama gerekirse buraya: _logger.LogWarning("Cache temizlenemedi");
+            }
 
-            return new RentResponseDto(true, "Movie Rented is succesfully!", totalCost,
+            try
+            {
+                await busService.PublishAsync(new FilmRentedEvent
+                {
+                    Email = user.Email,
+                    Subject = "Movie Rented is successfully!",
+                    Message = $"'{movie.Title}' Rented. Tutar: {totalCost} TL"
+                });
+            }
+            catch (Exception)
+            {
+                // Loglama gerekirse buraya: _logger.LogError("RabbitMQ Hatası");
+            }
+
+            return new RentResponseDto(true, "Movie Rented is successfully!", totalCost,
                 user.WalletBalance, endDate, pricing.DurationType.ToString(), request.Quantity,
                 $"{request.Quantity} {pricing.DurationType} Rentals");
         }

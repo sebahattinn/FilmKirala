@@ -16,6 +16,7 @@ namespace FilmKirala.Infrastructure.Repositories
                 .Include(m => m.RentalPricings)
                 .Include(m => m.Reviews)
                     .ThenInclude(r => r.User)
+                    .AsTracking()
                 .FirstOrDefaultAsync(m => m.Id == id);
         }
     }
