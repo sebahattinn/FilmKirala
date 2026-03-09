@@ -163,7 +163,7 @@ builder.Services.AddMiniProfiler(options =>
 }).AddEntityFramework();
 
 builder.Services.AddScoped<IReportService, ReportService>();
-builder.Services.AddHostedService<ReportBackgroundWorker>();
+builder.Services.AddHostedService<ReportBackgroundWorker>();        //worker bundan alt alta daha eklersem worker sayısı da artar ab
 
 #endregion
 

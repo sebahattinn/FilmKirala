@@ -74,7 +74,7 @@ namespace FilmKirala.Report.Api.Services
                     bool isFirstBatch = true;
                     int totalMovies = await conn.ExecuteScalarAsync<int>("SELECT COUNT(*) FROM Movies WITH (NOLOCK)");
 
-                    while (true)
+                    while (true)    
                     {
                         List<dynamic> movies;
                         using (MiniProfiler.Current?.Step($"Batch Çekiliyor (LastId: {lastId})"))
@@ -140,10 +140,10 @@ namespace FilmKirala.Report.Api.Services
                         }
                     }
 
-                    // --- DÜZELTİLEN KISIM BURASI ---
+                  
                     using (MiniProfiler.Current?.Step("DB: Bildirim Kaydı Atılıyor"))
                     {
-                        // Yeni Constructor: Sadece 4 temel parametre veriyoruz.
+                        // Constructor Sadece 4 temel parametre veriyoruz.
                         var notification = new NotificationLog(
                             userEmail: "admin@filmkirala.com",
                             subject: "Rapor Hazır",
