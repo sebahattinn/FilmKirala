@@ -2,6 +2,7 @@
 using FilmKirala.Application.Interfaces.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
+using System.Security.Claims;
 
 namespace FilmKirala.Api.Controllers
 {
@@ -36,6 +37,18 @@ namespace FilmKirala.Api.Controllers
             await _authService.UpdateUserBalanceAsync(request.Email, (int)request.NewBalance);
 
             return Ok(new { Message = "User balance updated successfully." });
+        }
+
+        [Authorize]
+        [HttpPost("top-up")]
+        public async Task<IActionResult> TopUp([FromBody] TopUpRequestDto request)
+        {
+            var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out var userId))
+                return Unauthorized("Token geçersiz.");
+
+            var result = await _authService.TopUpBalanceAsync(userId, request.Amount);
+            return Ok(result);
         }
 
         [Authorize]

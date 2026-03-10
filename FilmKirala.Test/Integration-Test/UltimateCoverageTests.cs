@@ -27,9 +27,10 @@ namespace FilmKirala.Test.IntegrationTests
         {
             var movieRepo = new MovieRepository(context, NullLogger<MovieRepository>.Instance);
             var userRepo = new UserRepository(context, NullLogger<UserRepository>.Instance);
+            var pricingRepo = new RentalPricingRepository(context, NullLogger<RentalPricingRepository>.Instance);
             var loggerFactory = new NullLoggerFactory();
 
-            return new UnitOfWork(context, movieRepo, userRepo, loggerFactory);
+            return new UnitOfWork(context, movieRepo, userRepo, pricingRepo, loggerFactory);
         }
 
         [Fact]

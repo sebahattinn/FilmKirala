@@ -37,5 +37,11 @@ namespace FilmKirala.Domain.Entity
             if (newBalance < 0) throw new ArgumentException("Bakiye 0'dan küçük olamaz!");
             WalletBalance = (int)newBalance;
         }
+
+        public void AddBalance(int amount)
+        {
+            if (amount <= 0) throw new ArgumentException("Yüklenecek tutar 0'dan büyük olmalıdır.");
+            WalletBalance += amount;
+        }
     }
 }

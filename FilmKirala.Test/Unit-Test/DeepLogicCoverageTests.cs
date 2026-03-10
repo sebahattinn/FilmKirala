@@ -3,6 +3,7 @@ using Xunit;
 using FilmKirala.Application.Services;
 using FilmKirala.Application.DTOs;
 using FilmKirala.Application.Interfaces;
+using FilmKirala.Application.Interfaces.Repositories;
 using FilmKirala.Application.Interfaces.Services;
 using FilmKirala.Domain.Entity;
 using FilmKirala.Domain.Enums;
@@ -11,7 +12,7 @@ using FilmKirala.Infrastructure.Repositories;
 using FilmKirala.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using System.Collections.Generic;
-using Microsoft.Extensions.Logging.Abstractions; 
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace FilmKirala.Test.UnitTests
 {
@@ -71,14 +72,16 @@ namespace FilmKirala.Test.UnitTests
 
             var rentalService = new RentalService(uowMock.Object, null!, busMock.Object, cacheMock.Object);
 
-            var user = new User("Seba", "seba@test.com", "h", "s", 100, Roles.User);
-            uowMock.Setup(x => x.Users.GetByIdAsync(It.IsAny<int>())).ReturnsAsync(user);
+            // Fiyat paketi bulunamadı senaryosu: film için o tür tanımlı değil
+            var pricingRepoMock = new Mock<IRentalPricingRepository>();
+            pricingRepoMock
+                .Setup(x => x.GetPricingByMovieAndTypeAsync(It.IsAny<int>(), It.IsAny<DurationType>()))
+                .ReturnsAsync((RentalPricing)null!);
+            uowMock.Setup(x => x.RentalPricings).Returns(pricingRepoMock.Object);
 
-            uowMock.Setup(x => x.Movies.GetByIdAsync(It.IsAny<int>())).ReturnsAsync((Movie)null!);
+            var request = new RentRequestDto(999, DurationType.Günlük);
 
-            var request = new RentRequestDto(999, 1);
-
-            await Assert.ThrowsAsync<KeyNotFoundException>(() => rentalService.RentMovieAsync(request, user.Id));
+            await Assert.ThrowsAsync<KeyNotFoundException>(() => rentalService.RentMovieAsync(request, 1));
         }
     }
 }

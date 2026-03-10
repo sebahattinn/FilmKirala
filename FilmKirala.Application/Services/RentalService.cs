@@ -1,12 +1,10 @@
-﻿using System.Data;
-using AutoMapper;
+﻿using AutoMapper;
 using FilmKirala.Application.DTOs;
 using FilmKirala.Application.Interfaces;
 using FilmKirala.Application.Interfaces.Services;
 using FilmKirala.Domain.Entity;
 using FilmKirala.Domain.Enums;
 using FilmKirala.Shared.Events;
-using Microsoft.Extensions.Logging;
 
 namespace FilmKirala.Application.Services
 {
@@ -18,23 +16,17 @@ namespace FilmKirala.Application.Services
     {
         public async Task<RentResponseDto> RentMovieAsync(RentRequestDto request, int userId)
         {
+            // Kullanıcı MovieId + DurationType seçiyor; service doğru pricing'i buluyor.
+            // Kullanıcının internal RentalPricingId bilmesine gerek yok. Veri tutarsızlığı yok.
+            var pricing = await unitOfWork.RentalPricings.GetPricingByMovieAndTypeAsync(request.MovieId, request.DurationType)
+                          ?? throw new KeyNotFoundException(
+                              $"'{request.DurationType}' türünde kiralama seçeneği bu film için tanımlı değil.");
+
+            var movie = pricing.Movie;
+
             var user = await unitOfWork.Users.GetByIdAsync(userId)
-                        ?? throw new KeyNotFoundException("User is not founded.");
+                       ?? throw new KeyNotFoundException("Kullanıcı bulunamadı.");
 
-            var movie = await unitOfWork.Movies.GetMovieWithDetailsAsync(request.MovieId)
-                         ?? throw new KeyNotFoundException("Movie is not founded.");
-
-            // Senior Dokunuşu: Hata aldığında sadece "Geçersiz" demek yerine mevcut ID'leri de fırlatıyoruz ki sorunu anlayalım.
-            var pricing = movie.RentalPricings.FirstOrDefault(p => p.Id == request.RentalPricingId);
-
-            if (pricing == null)
-            {
-                var existingPricingIds = string.Join(", ", movie.RentalPricings.Select(p => p.Id));
-                throw new InvalidOperationException(
-                    $"Geçersiz fiyatlandırma seçeneği (ID: {request.RentalPricingId}). " +
-                    $"Bu film için mevcut fiyatlandırma ID'leri: [{existingPricingIds}]");
-            }
-            
             if (movie.Stock < request.Quantity)
                 throw new InvalidOperationException(
                     $"'{movie.Title}' stok yetersiz! Mevcut: {movie.Stock}, İstenen: {request.Quantity}");
@@ -48,38 +40,25 @@ namespace FilmKirala.Application.Services
             user.DecreaseBalance(totalCost);
             movie.DecreaseStock(request.Quantity);
 
+            // Toplam süre = DurationValue (Paketin kendi süresi) * Quantity (Kaç paket alındı)
             DateTime endDate = CalculateEndDate(pricing.DurationType, pricing.DurationValue, request.Quantity);
 
             var rental = new Rental();
             rental.RentalsCreate(DateTime.UtcNow, endDate, totalCost, true, user, movie, pricing);
 
             await unitOfWork.Rentals.AddAsync(rental);
-
             await unitOfWork.CompleteAsync();
 
-            try
-            {
-                await cacheService.RemoveAsync($"user_profile_{userId}");
-            }
-            catch (Exception)
-            {
-                // Loglama gerekirse buraya: _logger.LogWarning("Cache temizlenemedi");
-            }
+            // Fire-and-forget: Cache ve mesaj kuyruğu işlemleri kritik değil,
+            // response süresini uzatmamak için beklenmez.
+            _ = cacheService.RemoveAsync($"user_profile_{userId}");
 
-            try
+            _ = busService.PublishAsync(new FilmRentedEvent
             {
-                await busService.PublishAsync(new FilmRentedEvent
-                {
-                    Email = user.Email,
-                    Subject = "Movie Rented is successfully!",
-                    Message = $"'{movie.Title}' Rented. Tutar: {totalCost} TL"
-                });
-            }
-            catch (Exception)
-            {
-
-                
-            }
+                Email = user.Email,
+                Subject = "Movie Rented is successfully!",
+                Message = $"'{movie.Title}' Rented. Tutar: {totalCost} TL"
+            });
 
             return new RentResponseDto(true, "Movie Rented is successfully!", totalCost,
                 user.WalletBalance, endDate, pricing.DurationType.ToString(), request.Quantity,

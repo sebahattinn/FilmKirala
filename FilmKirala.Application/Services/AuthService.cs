@@ -80,7 +80,23 @@ public class AuthService(IUnitOfWork unitOfWork, IConfiguration configuration, I
         user.UpdateBalance(newBalance);
         await unitOfWork.CompleteAsync();
 
-        await cacheService.RemoveAsync($"user_profile_{user.Id}");
+        _ = cacheService.RemoveAsync($"user_profile_{user.Id}");
+    }
+
+    public async Task<TopUpResponseDto> TopUpBalanceAsync(int userId, int amount)
+    {
+        if (amount <= 0)
+            throw new ArgumentException("Yüklenecek tutar 0'dan büyük olmalıdır.");
+
+        var user = await unitOfWork.Users.GetByIdAsync(userId)
+                   ?? throw new KeyNotFoundException("Kullanıcı bulunamadı.");
+
+        user.AddBalance(amount);
+        await unitOfWork.CompleteAsync();
+
+        _ = cacheService.RemoveAsync($"user_profile_{userId}");
+
+        return new TopUpResponseDto(user.WalletBalance, $"{amount} TL bakiyenize eklendi.");
     }
 
     public async Task<AuthResponseDto> RefreshTokenAsync(RefreshTokenRequestDto request)

@@ -9,7 +9,7 @@ namespace FilmKirala.Application.Interfaces
         IUserRepository Users { get; }
         IGenericRepository<Rental> Rentals { get; }
         IGenericRepository<Review> Reviews { get; }
-        IGenericRepository<RentalPricing> RentalPricings { get; }
+        IRentalPricingRepository RentalPricings { get; }
         IGenericRepository<NotificationLog> NotificationLogs { get; }
         Task<int> CompleteAsync(); //  DB'ye kaydetme teamplate'i
     }

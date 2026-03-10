@@ -82,6 +82,7 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 builder.Services.AddScoped(typeof(IGenericRepository<>), typeof(GenericRepository<>));
 builder.Services.AddScoped<IMovieRepository, MovieRepository>();
 builder.Services.AddScoped<IUserRepository, UserRepository>();
+builder.Services.AddScoped<IRentalPricingRepository, RentalPricingRepository>();
 builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 
 // Uygulama Servisleri (Dependency Injection)
