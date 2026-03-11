@@ -7,7 +7,7 @@ namespace FilmKirala.Application.Interfaces.Services
     {
         Task<IEnumerable<MovieListDto>> GetAllMoviesAsync(string? search = null, string? genre = null, int page = 1, int pageSize = 20);
         Task<MovieDetailDto?> GetMovieByIdAsync(int id);
-        Task AddMovieAsync(CreateMovieDto createMovieDto);
+        Task CreateMovieAsync(CreateMovieDto createMovieDto);
         Task AddRentalPricingAsync(int movieId, DurationType durationType, int price);
     }
 }

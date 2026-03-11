@@ -58,7 +58,7 @@ namespace FilmKirala.Test.IntegrationTests
 
             var rentRequest = new RentRequestDto(movie.Id, DurationType.Günlük);
 
-            var rentalResult = await rentalService.RentMovieAsync(rentRequest, user.Id);
+            var rentalResult = await rentalService.CreateRentalAsync(rentRequest, user.Id);
 
             var reviewDto = new CreateReviewDto { MovieId = movie.Id, Comment = "Harika!", Rating = 5 };
             await reviewService.AddReviewAsync(reviewDto, user.Id);

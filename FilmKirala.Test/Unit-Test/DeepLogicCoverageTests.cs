@@ -81,7 +81,7 @@ namespace FilmKirala.Test.UnitTests
 
             var request = new RentRequestDto(999, DurationType.Günlük);
 
-            await Assert.ThrowsAsync<KeyNotFoundException>(() => rentalService.RentMovieAsync(request, 1));
+            await Assert.ThrowsAsync<KeyNotFoundException>(() => rentalService.CreateRentalAsync(request, 1));
         }
     }
 }

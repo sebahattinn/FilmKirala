@@ -53,7 +53,7 @@ namespace FilmKirala.Test.IntegrationTests
 
             var request = new RentRequestDto(movie.Id, DurationType.Günlük);
 
-            await Assert.ThrowsAsync<InvalidOperationException>(() => service.RentMovieAsync(request, user.Id));
+            await Assert.ThrowsAsync<InvalidOperationException>(() => service.CreateRentalAsync(request, user.Id));
 
             var dbUser = await context.Users.FindAsync(user.Id);
             Assert.Equal(100, dbUser!.WalletBalance);
@@ -79,7 +79,7 @@ namespace FilmKirala.Test.IntegrationTests
 
             var request = new RentRequestDto(movie.Id, DurationType.Günlük);
 
-            var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => service.RentMovieAsync(request, user.Id));
+            var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => service.CreateRentalAsync(request, user.Id));
             Assert.Contains("stock", ex.Message.ToLower());
         }
 
@@ -103,7 +103,7 @@ namespace FilmKirala.Test.IntegrationTests
 
             var request = new RentRequestDto(movie.Id, DurationType.Haftalık);
 
-            var ex = await Assert.ThrowsAsync<KeyNotFoundException>(() => service.RentMovieAsync(request, user.Id));
+            var ex = await Assert.ThrowsAsync<KeyNotFoundException>(() => service.CreateRentalAsync(request, user.Id));
             Assert.Contains("haftalık", ex.Message.ToLower());
         }
 
@@ -127,7 +127,7 @@ namespace FilmKirala.Test.IntegrationTests
 
             var request = new RentRequestDto(movie.Id, DurationType.Saatlik);
 
-            var result = await service.RentMovieAsync(request, user.Id);
+            var result = await service.CreateRentalAsync(request, user.Id);
 
             var expectedDate = DateTime.UtcNow.AddHours(3);
             Assert.True(Math.Abs((result.RentalEndDate - expectedDate).TotalMinutes) < 1);

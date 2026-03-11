@@ -1,4 +1,4 @@
-﻿using FilmKirala.Application.DTOs;
+using FilmKirala.Application.DTOs;
 using FilmKirala.Application.Interfaces.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -8,7 +8,7 @@ namespace FilmKirala.Api.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    [Authorize] 
+    [Authorize]
     public class ReviewsController : ControllerBase
     {
         private readonly IReviewService _reviewService;
@@ -19,22 +19,15 @@ namespace FilmKirala.Api.Controllers
         }
 
         [HttpPost]
-        public async Task<IActionResult> AddReview([FromBody] CreateReviewDto request)
+        public async Task<IActionResult> CreateReview([FromBody] CreateReviewDto request)
         {
             var userIdString = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             if (string.IsNullOrEmpty(userIdString)) return Unauthorized();
 
             int userId = int.Parse(userIdString);
 
-            try
-            {
-                await _reviewService.AddReviewAsync(request, userId);
-                return Ok(new { message = "your commend has been adeed" });
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(new { error = ex.Message });
-            }
+            await _reviewService.AddReviewAsync(request, userId);
+            return Ok(new { message = "Your review has been submitted successfully." });
         }
     }
 }

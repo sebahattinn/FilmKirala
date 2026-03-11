@@ -36,10 +36,10 @@ namespace FilmKirala.Api.Controllers
 
         [Authorize(Roles = "Admin")]
         [HttpPost]
-        public async Task<IActionResult> Add([FromBody] CreateMovieDto request)
+        public async Task<IActionResult> CreateMovie([FromBody] CreateMovieDto request)
         {
-            await _movieService.AddMovieAsync(request);
-            return Ok(new { message = "Film added has been succesfuly" });
+            await _movieService.CreateMovieAsync(request);
+            return CreatedAtAction(nameof(GetById), new { }, new { message = "Movie created successfully." });
         }
     }
 }

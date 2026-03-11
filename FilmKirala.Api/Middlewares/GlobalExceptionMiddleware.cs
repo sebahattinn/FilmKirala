@@ -27,7 +27,7 @@ namespace FilmKirala.Api.Middlewares
                 {
                     KeyNotFoundException => (int)HttpStatusCode.NotFound,
                     UnauthorizedAccessException => (int)HttpStatusCode.Unauthorized,
-                    InvalidOperationException => (int)HttpStatusCode.BadRequest,
+                    InvalidOperationException => (int)HttpStatusCode.BadRequest,   
                     _ => (int)HttpStatusCode.InternalServerError
                 };
 

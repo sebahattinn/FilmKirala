@@ -33,7 +33,7 @@ namespace FilmKirala.Report.Api.Services
         }
 
         // DB'ye Pending kaydı atar, JobId döner 
-        public async Task<string> EnqueueReportAsync(bool isCsv)
+        public async Task<string> QueueReportAsync(bool isCsv)
         {
             var jobId = Guid.NewGuid().ToString("N")[..8];
             var job = ReportJob.Create(jobId, isCsv);

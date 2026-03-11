@@ -32,7 +32,7 @@ namespace FilmKirala.Test.UnitTests
         }
 
         [Fact]
-        public async Task RentMovieAsync_ShouldThrowInvalidOperationException_WhenUserBalanceIsInsufficient()
+        public async Task CreateRentalAsync_ShouldThrowInvalidOperationException_WhenUserBalanceIsInsufficient()
         {
             // Arrange
             var userId = 1;
@@ -53,7 +53,7 @@ namespace FilmKirala.Test.UnitTests
 
             // Act & Assert
             var exception = await Assert.ThrowsAsync<InvalidOperationException>(() =>
-                _rentalService.RentMovieAsync(request, userId));
+                _rentalService.CreateRentalAsync(request, userId));
 
             Assert.Contains("balance", exception.Message, StringComparison.OrdinalIgnoreCase);
         }

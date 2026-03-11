@@ -29,7 +29,7 @@ namespace FilmKirala.Test.UnitTests
         }
 
         [Fact]
-        public async Task AddMovieAsync_ShouldCallRepositoryAdd_WhenRequestIsValid()
+        public async Task CreateMovieAsync_ShouldCallRepositoryAdd_WhenRequestIsValid()
         {
             // Arrange (Senin DTO yapına göre nesne oluşturma kısmını düzelttik)
             var dto = new CreateMovieDto
@@ -42,7 +42,7 @@ namespace FilmKirala.Test.UnitTests
             };
 
             // Act
-            await _movieService.AddMovieAsync(dto);
+            await _movieService.CreateMovieAsync(dto);
 
             // Assert
             // Movie nesnesinin repository'ye bir kez eklendiğini doğrula

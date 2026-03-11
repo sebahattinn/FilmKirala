@@ -14,25 +14,27 @@ public class ReportBackgroundWorker : BackgroundService
     private readonly ILogger<ReportBackgroundWorker> _logger;             // Arka planda sürekli polling yapıyo bu sayfa ab.
     private readonly TimeSpan _pollInterval = TimeSpan.FromSeconds(5);   // Worker Her 5 saniyede job var mı diye check ediyor 
     private readonly SemaphoreSlim _semaphore = new SemaphoreSlim(3);  // maks 3 rapor aynı anda işlenebilir. Fazla gelirse kuyrukta bekler
-    private int _processedCount = 0;                                 // Toplam işlenen rapor sayacı
+    private int _processedCount = 0;                                     // Toplam işlenen rapor sayacı
 
     public ReportBackgroundWorker(IServiceScopeFactory scopeFactory, ILogger<ReportBackgroundWorker> logger)
     {
         _scopeFactory = scopeFactory;
         _logger = logger;
     }
-    
+
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         _logger.LogInformation(">>> [REPORT-WORKER] Started | Polling: {Interval}s | MaxConcurrency: 3", _pollInterval.Seconds);
 
         while (!stoppingToken.IsCancellationRequested)
         {
-            try                      
+            try
             {
-                
                 _logger.LogDebug("[HEARTBEAT] {Time} - Bekleyen iş aranıyor... (Active Slots: {Slots}/3)",
                     DateTime.Now.ToString("HH:mm:ss"), 3 - _semaphore.CurrentCount);
+
+                // İşleme başlamadan önce bir slot bekliyoruz
+                await _semaphore.WaitAsync(stoppingToken);
 
                 await ProcessNextPendingJobAsync(stoppingToken);
             }
@@ -50,29 +52,37 @@ public class ReportBackgroundWorker : BackgroundService
         using var scope = _scopeFactory.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
+        // deadlock önleme yeri
         var pendingJob = await db.ReportJobs
+            .AsNoTracking()
             .Where(j => j.Status == ReportJobStatus.Pending)
             .OrderBy(j => j.CreatedAt)
             .FirstOrDefaultAsync(stoppingToken);
 
-        if (pendingJob == null) return;
+        if (pendingJob == null)
+        {
+            _semaphore.Release(); // İş yoksa tuttuğumuz slotu geri bırakıyoruz
+            return;
+        }
 
-        
         _logger.LogWarning("[NEW JOB]  Bekleyen rapor yakalandı! JobId: {JobId}", pendingJob.JobId);
 
-        pendingJob.MarkAsProcessing();
-        await db.SaveChangesAsync(stoppingToken);
+        // Durumu "Processing" olarak güncellemek için yeni bir scope üzerinden takip (tracking) başlatıyorum
+        using (var updateScope = _scopeFactory.CreateScope())
+        {
+            var updateDb = updateScope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var jobToUpdate = await updateDb.ReportJobs.FirstOrDefaultAsync(x => x.Id == pendingJob.Id, stoppingToken);
+            if (jobToUpdate != null)
+            {
+                jobToUpdate.MarkAsProcessing();
+                await updateDb.SaveChangesAsync(stoppingToken);
+            }
+        }
 
         var jobId = pendingJob.JobId;
         var isCsv = pendingJob.IsCsv;
 
-        if (_semaphore.CurrentCount == 0)
-        {
-            _logger.LogInformation("[QUEUED]  Tüm threadler dolu. {JobId} kuyrukta bekliyor...", jobId);
-        }
-
-        await _semaphore.WaitAsync(stoppingToken);
-
+        // Arka plan görevini başlatıyorum
         _ = Task.Run(async () =>
         {
             _logger.LogInformation("[START]  İşleniyor: {JobId} (Thread: {ThreadId})", jobId, Environment.CurrentManagedThreadId);
@@ -83,6 +93,7 @@ public class ReportBackgroundWorker : BackgroundService
                 using var jobScope = _scopeFactory.CreateScope();
                 var reportService = jobScope.ServiceProvider.GetRequiredService<IReportService>();
 
+                // Asıl ağır işi yapan servis çağrısı
                 await reportService.CreateLargeReportInBackgroundAsync(jobId, isCsv);
 
                 var duration = DateTime.Now - startTime;
@@ -113,7 +124,7 @@ public class ReportBackgroundWorker : BackgroundService
             }
             finally
             {
-                _semaphore.Release();
+                _semaphore.Release(); 
                 _logger.LogDebug("[RELEASE]  Slot boşaldı. Kalan aktif iş: {Count}/3", 3 - _semaphore.CurrentCount);
             }
         }, stoppingToken);

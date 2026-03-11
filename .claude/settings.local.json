@@ -22,7 +22,8 @@
       "Bash(cd \"C:/Users/sebahattin/Desktop/Dengeage/3.Hafta/FilmKirala/FilmKirala\" && dotnet test FilmKirala.Test/FilmKirala.Test.csproj --no-build 2>&1 | grep \"Hata İletisi\" -A 5)",
       "Bash(cd \"C:/Users/sebahattin/Desktop/Dengeage/3.Hafta/FilmKirala/FilmKirala\" && dotnet build FilmKirala.Test/FilmKirala.Test.csproj 2>&1 | tail -3 && dotnet test FilmKirala.Test/FilmKirala.Test.csproj --no-build 2>&1 | tail -3)",
       "Bash(cd \"C:/Users/sebahattin/Desktop/Dengeage/3.Hafta/FilmKirala/FilmKirala\" && dotnet build FilmKirala.Test/FilmKirala.Test.csproj 2>&1 | tail -2 && dotnet test FilmKirala.Test/FilmKirala.Test.csproj --no-build 2>&1 | tail -3)",
-      "Bash(cd \"C:/Users/sebahattin/Desktop/Dengeage/3.Hafta/FilmKirala/FilmKirala\" && dotnet ef database update --project FilmKirala.Infrastructure --startup-project FilmKirala.Api 2>&1 | tail -8)"
+      "Bash(cd \"C:/Users/sebahattin/Desktop/Dengeage/3.Hafta/FilmKirala/FilmKirala\" && dotnet ef database update --project FilmKirala.Infrastructure --startup-project FilmKirala.Api 2>&1 | tail -8)",
+      "Bash(cd \"C:/Users/sebahattin/Desktop/Dengeage/3.Hafta/FilmKirala/FilmKirala\" && dotnet build --no-restore 2>&1 | tail -20)"
     ]
   }
 }

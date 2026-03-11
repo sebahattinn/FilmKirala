@@ -39,7 +39,7 @@ namespace FilmKirala.Application.Services
             return _mapper.Map<MovieDetailDto>(movie);
         }
 
-        public async Task AddMovieAsync(CreateMovieDto createMovieDto)
+        public async Task CreateMovieAsync(CreateMovieDto createMovieDto)
         {
             var movie = new Movie(createMovieDto.Title, createMovieDto.Description, createMovieDto.Genre, createMovieDto.Stock, true);
 

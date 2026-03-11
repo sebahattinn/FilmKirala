@@ -14,7 +14,7 @@ namespace FilmKirala.Application.Services
         IBusService busService,
         ICacheService cacheService) : IRentalService 
     {
-        public async Task<RentResponseDto> RentMovieAsync(RentRequestDto request, int userId)
+        public async Task<RentResponseDto> CreateRentalAsync(RentRequestDto request, int userId)
         {
           
             var pricing = await unitOfWork.RentalPricings.GetPricingByMovieAndTypeAsync(request.MovieId, request.DurationType)

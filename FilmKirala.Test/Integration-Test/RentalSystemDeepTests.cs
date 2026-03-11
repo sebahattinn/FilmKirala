@@ -53,7 +53,7 @@ namespace FilmKirala.Test.IntegrationTests
 
             var rentRequest = new RentRequestDto(movie.Id, DurationType.Günlük);
 
-            await Assert.ThrowsAsync<InvalidOperationException>(() => rentalService.RentMovieAsync(rentRequest, user.Id));
+            await Assert.ThrowsAsync<InvalidOperationException>(() => rentalService.CreateRentalAsync(rentRequest, user.Id));
         }
 
         [Fact]
@@ -76,7 +76,7 @@ namespace FilmKirala.Test.IntegrationTests
 
             var rentRequest = new RentRequestDto(movie.Id, DurationType.Günlük);
 
-            await Assert.ThrowsAsync<InvalidOperationException>(() => rentalService.RentMovieAsync(rentRequest, user.Id));
+            await Assert.ThrowsAsync<InvalidOperationException>(() => rentalService.CreateRentalAsync(rentRequest, user.Id));
         }
 
         [Fact]
@@ -99,7 +99,7 @@ namespace FilmKirala.Test.IntegrationTests
 
             var rentRequest = new RentRequestDto(movie.Id, DurationType.Günlük);
 
-            var result = await rentalService.RentMovieAsync(rentRequest, user.Id);
+            var result = await rentalService.CreateRentalAsync(rentRequest, user.Id);
 
             Assert.True(result.RentalEndDate > DateTime.UtcNow.AddDays(1));
         }

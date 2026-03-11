@@ -31,7 +31,7 @@ namespace FilmKirala.Api.Controllers
 
         [Authorize(Roles = "Admin")]
         [HttpPost("update-balance")]
-        public async Task<IActionResult> UpdateBalance([FromBody] UpdateBalanceDto request)
+        public async Task<IActionResult> AdminUpdateBalance([FromBody] UpdateBalanceDto request)
         {
             //  decimal olan request.NewBalance'ı int'e cast ettim
             await _authService.UpdateUserBalanceAsync(request.Email, (int)request.NewBalance);
@@ -41,7 +41,7 @@ namespace FilmKirala.Api.Controllers
 
         [Authorize]
         [HttpPost("top-up")]
-        public async Task<IActionResult> TopUp([FromBody] TopUpRequestDto request)
+        public async Task<IActionResult> TopUpBalance([FromBody] TopUpRequestDto request)
         {
             var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out var userId))
@@ -53,7 +53,7 @@ namespace FilmKirala.Api.Controllers
 
         [Authorize]
         [HttpGet("me")]
-        public async Task<IActionResult> GetCurrentUser()
+        public async Task<IActionResult> GetProfile()
         {
             // Token içindeki NameIdentifier (Id) claim'ini çekiyoruz
             var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
