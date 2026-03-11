@@ -22,7 +22,7 @@ namespace FilmKirala.Api.Controllers
             if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out var userId))
             {
                
-                return Unauthorized("Kiralama yapmak için giriş yapmalısınız.");
+                return Unauthorized("You must log in to make a reservation.");
             }
 
             var result = await _rentalService.RentMovieAsync(request, userId);
@@ -36,7 +36,7 @@ namespace FilmKirala.Api.Controllers
 
             if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out var userId))
             {
-                return Unauthorized("Kiralamalarınızı görmek için giriş yapmalısınız.");
+                return Unauthorized("You must log in to view your rentals.");
             }
 
             var rentals = await _rentalService.GetUserRentalsAsync(userId);

@@ -39,7 +39,7 @@ namespace FilmKirala.Api.Controllers
         public async Task<IActionResult> Add([FromBody] CreateMovieDto request)
         {
             await _movieService.AddMovieAsync(request);
-            return Ok(new { message = "Film başarıyla eklendi." });
+            return Ok(new { message = "Film added has been succesfuly" });
         }
     }
 }

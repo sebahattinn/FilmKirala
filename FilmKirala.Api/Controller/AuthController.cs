@@ -13,7 +13,7 @@ namespace FilmKirala.Api.Controllers
         private readonly IAuthService _authService;
         public AuthController(IAuthService authService) => _authService = authService;
 
-        [HttpPost("register")]
+        [HttpPost("register")]   
         public async Task<IActionResult> Register([FromBody] RegisterRequestDto request)
         {
             var result = await _authService.RegisterAsync(request);

@@ -35,7 +35,7 @@ namespace FilmKirala.Application.Services
         public async Task<MovieDetailDto?> GetMovieByIdAsync(int id)
         {
             var movie = await _unitOfWork.Movies.GetMovieWithDetailsAsync(id);
-            if (movie == null) throw new KeyNotFoundException($"Film bulunamadı (ID: {id})");
+            if (movie == null) throw new KeyNotFoundException($"Film not founded (ID: {id})");
             return _mapper.Map<MovieDetailDto>(movie);
         }
 
@@ -56,7 +56,7 @@ namespace FilmKirala.Application.Services
         public async Task AddRentalPricingAsync(int movieId, DurationType durationType, int price)
         {
             var movie = await _unitOfWork.Movies.GetByIdAsync(movieId);
-            if (movie == null) throw new KeyNotFoundException("Film bulunamadı.");
+            if (movie == null) throw new KeyNotFoundException("Not founded");
 
             movie.AddRentalPricing(durationType, 1, price);
             await _unitOfWork.CompleteAsync();

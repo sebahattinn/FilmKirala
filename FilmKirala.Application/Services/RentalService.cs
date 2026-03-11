@@ -16,48 +16,46 @@ namespace FilmKirala.Application.Services
     {
         public async Task<RentResponseDto> RentMovieAsync(RentRequestDto request, int userId)
         {
-            // Kullanıcı MovieId + DurationType seçiyor; service doğru pricing'i buluyor.
-            // Kullanıcının internal RentalPricingId bilmesine gerek yok. Veri tutarsızlığı yok.
+          
             var pricing = await unitOfWork.RentalPricings.GetPricingByMovieAndTypeAsync(request.MovieId, request.DurationType)
                           ?? throw new KeyNotFoundException(
-                              $"'{request.DurationType}' türünde kiralama seçeneği bu film için tanımlı değil.");
+                              $"'{request.DurationType}' Rental options of this type are not defined for this film.");
 
             var movie = pricing.Movie;
 
             var user = await unitOfWork.Users.GetByIdAsync(userId)
-                       ?? throw new KeyNotFoundException("Kullanıcı bulunamadı.");
+                       ?? throw new KeyNotFoundException("User not found.");
 
             if (movie.Stock < request.Quantity)
                 throw new InvalidOperationException(
-                    $"'{movie.Title}' stok yetersiz! Mevcut: {movie.Stock}, İstenen: {request.Quantity}");
+                    $"'{movie.Title}' Out of stock! Available: {movie.Stock}, Requested: {request.Quantity}");
 
             int totalCost = pricing.Price * request.Quantity;
 
             if (user.WalletBalance < totalCost)
                 throw new InvalidOperationException(
-                    $"Bakiye yetersiz! Gereken: {totalCost} TL, Mevcut: {user.WalletBalance} TL");
+                    $"Insufficient balance! Required: {totalCost} TL, Current: {user.WalletBalance} TL");
 
             user.DecreaseBalance(totalCost);
             movie.DecreaseStock(request.Quantity);
 
-            // Toplam süre = DurationValue (Paketin kendi süresi) * Quantity (Kaç paket alındı)
+
             DateTime endDate = CalculateEndDate(pricing.DurationType, pricing.DurationValue, request.Quantity);
 
             var rental = new Rental();
-            rental.RentalsCreate(DateTime.UtcNow, endDate, totalCost, true, user, movie, pricing);
+            rental.RentalsCreate(DateTime.UtcNow, endDate, totalCost, true, user, movie, pricing, request.Quantity);
 
             await unitOfWork.Rentals.AddAsync(rental);
             await unitOfWork.CompleteAsync();
 
-            // Fire-and-forget: Cache ve mesaj kuyruğu işlemleri kritik değil,
-            // response süresini uzatmamak için beklenmez.
+            //  Fire and Forget async çağrıları
             _ = cacheService.RemoveAsync($"user_profile_{userId}");
 
             _ = busService.PublishAsync(new FilmRentedEvent
             {
                 Email = user.Email,
                 Subject = "Movie Rented is successfully!",
-                Message = $"'{movie.Title}' Rented. Tutar: {totalCost} TL"
+                Message = $"'{movie.Title}' Rented. Amount: {totalCost} TL"
             });
 
             return new RentResponseDto(true, "Movie Rented is successfully!", totalCost,
@@ -91,13 +89,13 @@ namespace FilmKirala.Application.Services
                     rental.ExpireRental();
                     if (movies.TryGetValue(rental.MovieId, out var movie))
                     {
-                        movie.IncreaseStock();
+                        movie.IncreaseStock(rental.Quantity);
                     }
                 }
                 await unitOfWork.CompleteAsync();
             }
         }
-
+        
         public async Task CheckExpiredRentalsAsync() => await CheckExpiredRentalsAsync(null);
 
         private static DateTime CalculateEndDate(DurationType type, int val, int qty)

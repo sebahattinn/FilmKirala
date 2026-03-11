@@ -55,7 +55,7 @@ namespace FilmKirala.Test.UnitTests
             var exception = await Assert.ThrowsAsync<InvalidOperationException>(() =>
                 _rentalService.RentMovieAsync(request, userId));
 
-            Assert.Contains("yetersiz", exception.Message.ToLower());
+            Assert.Contains("balance", exception.Message, StringComparison.OrdinalIgnoreCase);
         }
     }
 }

@@ -41,7 +41,7 @@ namespace FilmKirala.Infrastructure.Services
             catch (Exception ex)
             {
                 log.MarkAsFailed(ex.Message);
-                Console.WriteLine($"[RabbitMQ Error]: Mesaj gönderilemedi. Hata: {ex.Message}");
+                Console.WriteLine($"[RabbitMQ Error]: The message could not be sent. Error: {ex.Message}");
             }
             finally
             {

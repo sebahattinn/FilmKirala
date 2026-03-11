@@ -80,7 +80,7 @@ namespace FilmKirala.Test.IntegrationTests
             var request = new RentRequestDto(movie.Id, DurationType.Günlük);
 
             var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => service.RentMovieAsync(request, user.Id));
-            Assert.Contains("stok", ex.Message.ToLower());
+            Assert.Contains("stock", ex.Message.ToLower());
         }
 
         [Fact]

@@ -27,7 +27,7 @@ namespace FilmKirala.Infrastructure.Repositories
             var sw = Stopwatch.StartNew();
             var entityName = typeof(T).Name;
 
-            _logger.LogInformation("Pagination başladı: {EntityName}, Sayfa: {Page}, Boyut: {PageSize}", entityName, page, pageSize);
+            _logger.LogInformation("Pagination is started: {EntityName}, Sayfa: {Page}, Boyut: {PageSize}", entityName, page, pageSize);
 
             try
             {
@@ -45,7 +45,7 @@ namespace FilmKirala.Infrastructure.Repositories
                             .ToListAsync();
 
                 sw.Stop();
-                _logger.LogInformation("Pagination başarıyla tamamlandı: {EntityName}. Süre: {Elapsed}ms, Kayıt Sayısı: {Count}",
+                _logger.LogInformation("Pagination is succesfly: {EntityName}. Süre: {Elapsed}ms, Kayıt Sayısı: {Count}",
                     entityName, sw.ElapsedMilliseconds, result.Count);
 
                 return result;
@@ -53,7 +53,7 @@ namespace FilmKirala.Infrastructure.Repositories
             catch (Exception ex)
             {
                 sw.Stop();
-                _logger.LogError(ex, "Pagination HATASI! {EntityName} tablosunda sorgu {Elapsed}ms sonra patladı.", entityName, sw.ElapsedMilliseconds);
+                _logger.LogError(ex, "Pagination Errors! {EntityName} tablosunda Query {Elapsed}ms sonra crushed.", entityName, sw.ElapsedMilliseconds);
                 throw; 
             }
         }

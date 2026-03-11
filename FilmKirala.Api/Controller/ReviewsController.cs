@@ -29,7 +29,7 @@ namespace FilmKirala.Api.Controllers
             try
             {
                 await _reviewService.AddReviewAsync(request, userId);
-                return Ok(new { message = "Yorumunuz eklendi." });
+                return Ok(new { message = "your commend has been adeed" });
             }
             catch (Exception ex)
             {

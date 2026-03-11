@@ -15,7 +15,7 @@ namespace FilmKirala.Api.Controllers
         public async Task<IActionResult> ExportBackground([FromQuery] bool isCsv = false)
         {
             var jobId = await _reportService.EnqueueReportAsync(isCsv);
-            return Accepted(new { Status = "Hazırlanıyor", JobId = jobId, CheckStatusUrl = $"/api/MoviesReport/check-status/{jobId}" });
+            return Accepted(new { Status = "Getting ready", JobId = jobId, CheckStatusUrl = $"/api/MoviesReport/check-status/{jobId}" });
         }
 
         [HttpGet("download/{jobId}")]
@@ -23,7 +23,7 @@ namespace FilmKirala.Api.Controllers
         {
             var (isReady, fileBytes, fileName) = await _reportService.GetReportFileAsync(jobId);
 
-            if (!isReady) return NotFound("Rapor henüz hazır değil.");
+            if (!isReady) return NotFound("The report is not ready yet.");
 
             string contentType = fileName!.EndsWith(".csv") ? "text/csv" : "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
             return File(fileBytes!, contentType, fileName);

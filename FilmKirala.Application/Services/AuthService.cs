@@ -17,7 +17,7 @@ public class AuthService(IUnitOfWork unitOfWork, IConfiguration configuration, I
     public async Task<AuthResponseDto> RegisterAsync(RegisterRequestDto request)
     {
         if (await unitOfWork.Users.GetByEmailAsync(request.Email) != null)
-            throw new InvalidOperationException("Bu email zaten kayıtlı.");
+            throw new InvalidOperationException("This email is already registered.");
 
         CreatePasswordHash(request.Password, out byte[] passwordHash, out byte[] passwordSalt);
 
@@ -27,7 +27,7 @@ public class AuthService(IUnitOfWork unitOfWork, IConfiguration configuration, I
             Convert.ToBase64String(passwordHash),
             Convert.ToBase64String(passwordSalt),
             0,
-            Roles.User
+            Roles.User 
         );
 
         var refreshToken = GenerateRefreshToken();
@@ -43,10 +43,10 @@ public class AuthService(IUnitOfWork unitOfWork, IConfiguration configuration, I
     public async Task<AuthResponseDto> LoginAsync(LoginRequestDto request)
     {
         var user = await unitOfWork.Users.GetByEmailAsync(request.Email);
-        if (user == null) throw new UnauthorizedAccessException("E-posta veya şifre hatalı.");
+        if (user == null) throw new UnauthorizedAccessException("The email or password is incorrect.");
 
         if (!VerifyPasswordHash(request.Password, Convert.FromBase64String(user.PasswordHash), Convert.FromBase64String(user.PasswordSalt)))
-            throw new UnauthorizedAccessException("E-posta veya şifre hatalı.");
+            throw new UnauthorizedAccessException("The email or password is incorrect.");
 
         var refreshToken = GenerateRefreshToken();
         user.AddRefreshToken(refreshToken, DateTime.UtcNow.AddDays(7));
@@ -59,7 +59,7 @@ public class AuthService(IUnitOfWork unitOfWork, IConfiguration configuration, I
     public async Task<AuthResponseDto> GetCurrentUserAsync(int userId)
     {
         var user = await unitOfWork.Users.GetByIdAsync(userId);
-        if (user == null) throw new KeyNotFoundException("Kullanıcı bulunamadı.");
+        if (user == null) throw new KeyNotFoundException("User not founded");
 
         return new AuthResponseDto(
             user.Id,
@@ -75,7 +75,7 @@ public class AuthService(IUnitOfWork unitOfWork, IConfiguration configuration, I
     public async Task UpdateUserBalanceAsync(string email, int newBalance)
     {
         var user = await unitOfWork.Users.GetByEmailAsync(email);
-        if (user == null) throw new KeyNotFoundException($"Kullanıcı bulunamadı: {email}");
+        if (user == null) throw new KeyNotFoundException($"User not founded{email}");
 
         user.UpdateBalance(newBalance);
         await unitOfWork.CompleteAsync();
@@ -86,32 +86,32 @@ public class AuthService(IUnitOfWork unitOfWork, IConfiguration configuration, I
     public async Task<TopUpResponseDto> TopUpBalanceAsync(int userId, int amount)
     {
         if (amount <= 0)
-            throw new ArgumentException("Yüklenecek tutar 0'dan büyük olmalıdır.");
+            throw new ArgumentException("The amount to be loaded must be greater than 0.");
 
         var user = await unitOfWork.Users.GetByIdAsync(userId)
-                   ?? throw new KeyNotFoundException("Kullanıcı bulunamadı.");
+                   ?? throw new KeyNotFoundException("User not founded");
 
         user.AddBalance(amount);
         await unitOfWork.CompleteAsync();
 
         _ = cacheService.RemoveAsync($"user_profile_{userId}");
 
-        return new TopUpResponseDto(user.WalletBalance, $"{amount} TL bakiyenize eklendi.");
+        return new TopUpResponseDto(user.WalletBalance, $"{amount} Added to your TL balance.");
     }
 
     public async Task<AuthResponseDto> RefreshTokenAsync(RefreshTokenRequestDto request)
     {
-        // Refresh token ile eşleşen kullanıcıyı DB'den çekiyorum
+        
         var user = await unitOfWork.Users.GetByRefreshTokenAsync(request.RefreshToken);
 
         if (user == null)
-            throw new UnauthorizedAccessException("Refresh token geçersiz.");
+            throw new UnauthorizedAccessException("Refresh token is invalid.");
 
         var tokenRecord = user.RefreshTokens.FirstOrDefault(x => x.Token == request.RefreshToken);
         if (tokenRecord == null || !tokenRecord.IsActive)
-            throw new UnauthorizedAccessException("Refresh token süresi dolmuş veya geçersiz.");
+            throw new UnauthorizedAccessException("The refresh token has expired or is invalid.");
 
-        // Yeni tokenları üret
+        
         var newToken = CreateToken(user);
         var newRefreshToken = GenerateRefreshToken();
 

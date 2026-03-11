@@ -13,7 +13,7 @@
 
         public User User { get; private set; } = null!;
 
-        private UserRefreshToken() { } 
+        private UserRefreshToken() { } //for the EntitiyFrameWork
 
         public UserRefreshToken(string token, DateTime expiryTime, int userId)
         {

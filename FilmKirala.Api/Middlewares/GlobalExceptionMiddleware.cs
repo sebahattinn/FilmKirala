@@ -33,7 +33,7 @@ namespace FilmKirala.Api.Middlewares
 
                 await HandleExceptionAsync(context, ex, statusCode);
             }
-        }
+        }      
        
         private static Task HandleExceptionAsync(HttpContext context, Exception exception, int statusCode)
         {
