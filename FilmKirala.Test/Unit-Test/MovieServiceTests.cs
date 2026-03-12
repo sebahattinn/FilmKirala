@@ -22,7 +22,7 @@ namespace FilmKirala.Test.UnitTests
             _movieRepoMock = new Mock<IMovieRepository>();
             _mapperMock = new Mock<IMapper>();
 
-            // UnitOfWork içindeki Movies çağrıldığında sahte repository'yi dönmesini sağladık
+            // UnitOfWork içindeki Movies çağrıldığında sahte repository'yi dönmesini sağladım
             _uowMock.Setup(x => x.Movies).Returns(_movieRepoMock.Object);
 
             _movieService = new MovieService(_uowMock.Object, _mapperMock.Object);
@@ -31,7 +31,6 @@ namespace FilmKirala.Test.UnitTests
         [Fact]
         public async Task CreateMovieAsync_ShouldCallRepositoryAdd_WhenRequestIsValid()
         {
-            // Arrange (Senin DTO yapına göre nesne oluşturma kısmını düzelttik)
             var dto = new CreateMovieDto
             {
                 Title = "Inception",
@@ -41,14 +40,12 @@ namespace FilmKirala.Test.UnitTests
                 Pricings = new List<PricingDto>()
             };
 
-            // Act
+           
             await _movieService.CreateMovieAsync(dto);
 
-            // Assert
-            // Movie nesnesinin repository'ye bir kez eklendiğini doğrula
+         
             _movieRepoMock.Verify(x => x.AddAsync(It.IsAny<Movie>()), Times.Once);
 
-            // Veritabanı commit işleminin (SaveChangesAsync/CompleteAsync) çağrıldığını doğrula
             _uowMock.Verify(x => x.CompleteAsync(), Times.Once);
         }
     }

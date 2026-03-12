@@ -23,10 +23,10 @@ namespace FilmKirala.Api.Controllers
         {
             var (isReady, fileBytes, fileName) = await _reportService.GetReportFileAsync(jobId);
 
-            // SENIOR DOKUNUÞU: Rapor yoksa 404, varsa ama hazýr deðilse 202 dön.
+         
             if (!isReady)
             {
-                // Önce DB'de böyle bir kayýt var mý kontrol et (Status kontrolü için service'e bak)
+                // First, check if such a record exists in the DB (check the service for status control)
                 var status = await _reportService.GetJobStatusAsync(jobId);
                 if (status == "NotFound") return NotFound(new { message = "Böyle bir rapor talebi hiç oluþmamýþ." });
 
@@ -60,7 +60,7 @@ namespace FilmKirala.Api.Controllers
             return Ok(await _reportService.GetMovieSummaryAsync(lastId, pageSize));
         }
 
-        [HttpGet("export")]
+        [HttpGet("export")]  
         public async Task<IActionResult> ExportInstant([FromQuery] int? lastId = null, [FromQuery] int? pageSize = null, [FromQuery] bool isCsv = false)
         {
             var stream = await _reportService.ExportMoviesAsync(lastId, pageSize, isCsv);

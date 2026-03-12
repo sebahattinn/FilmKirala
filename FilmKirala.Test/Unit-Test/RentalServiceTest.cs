@@ -34,13 +34,13 @@ namespace FilmKirala.Test.UnitTests
         [Fact]
         public async Task CreateRentalAsync_ShouldThrowInvalidOperationException_WhenUserBalanceIsInsufficient()
         {
-            // Arrange
+      
             var userId = 1;
             var user = new User("Seba", "seba@test.com", "h", "s", 10, Roles.User);
             var movie = new Movie("Batman", "Desc", "Action", 5, true);
             movie.AddRentalPricing(DurationType.Günlük, 1, 50);
 
-            var pricing = movie.RentalPricings.First(); // pricing.Movie = movie (constructor'da set edildi)
+            var pricing = movie.RentalPricings.First(); 
 
             var pricingRepoMock = new Mock<IRentalPricingRepository>();
             pricingRepoMock
@@ -51,7 +51,6 @@ namespace FilmKirala.Test.UnitTests
 
             var request = new RentRequestDto(movie.Id, DurationType.Günlük);
 
-            // Act & Assert
             var exception = await Assert.ThrowsAsync<InvalidOperationException>(() =>
                 _rentalService.CreateRentalAsync(request, userId));
 

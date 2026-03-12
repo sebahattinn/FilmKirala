@@ -95,7 +95,6 @@ namespace FilmKirala.Test.IntegrationTests
 
             var user = new User("Seba", "test@test.com", "h", "s", 500, Roles.User);
             var movie = new Movie("The Whale", "Desc", "Drama", 10, true);
-            // Bu filme hiç pricing eklenmedi; Haftalık isteyince KeyNotFoundException fırlatmalı
 
             await context.Users.AddAsync(user);
             await context.Movies.AddAsync(movie);

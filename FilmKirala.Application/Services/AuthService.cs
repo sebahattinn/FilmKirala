@@ -115,7 +115,7 @@ public class AuthService(IUnitOfWork unitOfWork, IConfiguration configuration, I
         var newToken = CreateToken(user);
         var newRefreshToken = GenerateRefreshToken();
 
-        // Mevcut token'ı iptal et ve yenisini ekle
+        // Cancel the current token and add a new one
         tokenRecord.Revoke();
         user.AddRefreshToken(newRefreshToken, DateTime.UtcNow.AddDays(7));
 
@@ -147,7 +147,7 @@ public class AuthService(IUnitOfWork unitOfWork, IConfiguration configuration, I
 
         return new JwtSecurityTokenHandler().WriteToken(token);
     }
-
+    
     private static void CreatePasswordHash(string password, out byte[] passwordHash, out byte[] passwordSalt)
     {
         using var hmac = new HMACSHA512();

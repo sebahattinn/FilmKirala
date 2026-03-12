@@ -27,6 +27,7 @@ namespace FilmKirala.Infrastructure.Repositories
             Rentals = new GenericRepository<Rental>(_context, _loggerFactory.CreateLogger<GenericRepository<Rental>>());
             Reviews = new GenericRepository<Review>(_context, _loggerFactory.CreateLogger<GenericRepository<Review>>());
             NotificationLogs = new GenericRepository<NotificationLog>(_context, _loggerFactory.CreateLogger<GenericRepository<NotificationLog>>());
+           
         }
 
         public IMovieRepository Movies { get; }

@@ -72,7 +72,6 @@ namespace FilmKirala.Test.UnitTests
 
             var rentalService = new RentalService(uowMock.Object, null!, busMock.Object, cacheMock.Object);
 
-            // Fiyat paketi bulunamadı senaryosu: film için o tür tanımlı değil
             var pricingRepoMock = new Mock<IRentalPricingRepository>();
             pricingRepoMock
                 .Setup(x => x.GetPricingByMovieAndTypeAsync(It.IsAny<int>(), It.IsAny<DurationType>()))
