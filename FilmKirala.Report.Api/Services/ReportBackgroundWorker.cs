@@ -30,17 +30,17 @@ public class ReportBackgroundWorker : BackgroundService
         {
             try
             {
-                _logger.LogDebug("[HEARTBEAT] {Time} - Bekleyen iş aranıyor... (Active Slots: {Slots}/3)",
+                _logger.LogDebug("[HEARTBEAT] {Time} - Looking for pending work... (Active Slots: {Slots}/3)",
                     DateTime.Now.ToString("HH:mm:ss"), 3 - _semaphore.CurrentCount);
 
-                // İşleme başlamadan önce bir slot bekliyoruz
+                // We are waiting for a slot before starting processing
                 await _semaphore.WaitAsync(stoppingToken);
 
                 await ProcessNextPendingJobAsync(stoppingToken);
             }
             catch (Exception ex)
             {
-                _logger.LogCritical(ex, "[FATAL ERROR] BackgroundWorker ana döngüsü patladı!");
+                _logger.LogCritical(ex, "[FATAL ERROR] The main loop of the BackgroundWorker has crashed.!");
             }
 
             await Task.Delay(_pollInterval, stoppingToken);
@@ -52,7 +52,7 @@ public class ReportBackgroundWorker : BackgroundService
         using var scope = _scopeFactory.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
-        // deadlock önleme yeri
+        // deadlock prevention location
         var pendingJob = await db.ReportJobs
             .AsNoTracking()
             .Where(j => j.Status == ReportJobStatus.Pending)
@@ -61,13 +61,14 @@ public class ReportBackgroundWorker : BackgroundService
 
         if (pendingJob == null)
         {
-            _semaphore.Release(); // İş yoksa tuttuğumuz slotu geri bırakıyoruz
+            // If there is no work, we return the slot we reserved.
+            _semaphore.Release(); 
             return;
         }
 
-        _logger.LogWarning("[NEW JOB]  Bekleyen rapor yakalandı! JobId: {JobId}", pendingJob.JobId);
+        _logger.LogWarning("[NEW JOB]  Pending report caught! JobId: {JobId}", pendingJob.JobId);
 
-        // Durumu "Processing" olarak güncellemek için yeni bir scope üzerinden takip (tracking) başlatıyorum
+        // I am initiating tracking through a new scope to update the status to “Processing.”
         using (var updateScope = _scopeFactory.CreateScope())
         {
             var updateDb = updateScope.ServiceProvider.GetRequiredService<AppDbContext>();
@@ -82,10 +83,10 @@ public class ReportBackgroundWorker : BackgroundService
         var jobId = pendingJob.JobId;
         var isCsv = pendingJob.IsCsv;
 
-        // Arka plan görevini başlatıyorum
+        // I am starting the background task.
         _ = Task.Run(async () =>
         {
-            _logger.LogInformation("[START]  İşleniyor: {JobId} (Thread: {ThreadId})", jobId, Environment.CurrentManagedThreadId);
+            _logger.LogInformation("[START]  Processing: {JobId} (Thread: {ThreadId})", jobId, Environment.CurrentManagedThreadId);
             var startTime = DateTime.Now;
 
             try
@@ -93,17 +94,17 @@ public class ReportBackgroundWorker : BackgroundService
                 using var jobScope = _scopeFactory.CreateScope();
                 var reportService = jobScope.ServiceProvider.GetRequiredService<IReportService>();
 
-                // Asıl ağır işi yapan servis çağrısı
+                // The service call that does the heavy lifting
                 await reportService.CreateLargeReportInBackgroundAsync(jobId, isCsv);
 
                 var duration = DateTime.Now - startTime;
                 Interlocked.Increment(ref _processedCount);
-                _logger.LogInformation("[SUCCESS]  Bitti: {JobId} | Süre: {Sec}sn | Toplam: {Count}",
+                _logger.LogInformation("[SUCCESS]  Completed: {JobId} | Süre: {Sec}sn | Toplam: {Count}",
                     jobId, Math.Round(duration.TotalSeconds, 2), _processedCount);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "[ERROR]  Patladı: {JobId} | Mesaj: {Msg}", jobId, ex.Message);
+                _logger.LogError(ex, "[ERROR]  Boombed: {JobId} | Mesaj: {Msg}", jobId, ex.Message);
 
                 try
                 {
@@ -114,18 +115,18 @@ public class ReportBackgroundWorker : BackgroundService
                     {
                         failedJob.MarkAsFailed();
                         await failDb.SaveChangesAsync();
-                        _logger.LogInformation("[DB UPDATE]  {JobId} durumu 'Failed' olarak güncellendi.", jobId);
+                        _logger.LogInformation("[DB UPDATE]  {JobId} The status has been updated to ‘Failed’.", jobId);
                     }
                 }
                 catch (Exception dbEx)
                 {
-                    _logger.LogError(dbEx, "[CRITICAL] DB güncellemesi yapılamadı! JobId: {JobId}", jobId);
+                    _logger.LogError(dbEx, "[CRITICAL] The database update failed.! JobId: {JobId}", jobId);
                 }
             }
             finally
             {
                 _semaphore.Release(); 
-                _logger.LogDebug("[RELEASE]  Slot boşaldı. Kalan aktif iş: {Count}/3", 3 - _semaphore.CurrentCount);
+                _logger.LogDebug("[RELEASE]  The slot is empty. Remaining active jobs: {Count}/3", 3 - _semaphore.CurrentCount);
             }
         }, stoppingToken);
     }

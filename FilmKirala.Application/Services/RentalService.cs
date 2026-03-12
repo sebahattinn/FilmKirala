@@ -48,7 +48,7 @@ namespace FilmKirala.Application.Services
             await unitOfWork.Rentals.AddAsync(rental);
             await unitOfWork.CompleteAsync();
 
-            //  Fire and Forget async çağrıları
+            //  Fire and Forget async Calls
             _ = cacheService.RemoveAsync($"user_profile_{userId}");
 
             _ = busService.PublishAsync(new FilmRentedEvent

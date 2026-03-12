@@ -16,7 +16,7 @@ namespace FilmKirala.Infrastructure.Services
             }
             catch (Exception)
             {
-                // Redis kapalı olsa bile null dönerek sistemin DB'den devam etmesini sağlarız.
+                // Even if Redis is down, we ensure the system continues from the database by returning null.
                 return default;
             }
         }
@@ -33,7 +33,7 @@ namespace FilmKirala.Infrastructure.Services
             }
             catch (Exception)
             {
-                // Redis bağlantı hatası durumunda işlemi kesmiyoruz.
+                // We do not terminate the process in case of a Redis connection error.
             }
         }
 
@@ -45,7 +45,7 @@ namespace FilmKirala.Infrastructure.Services
             }
             catch (Exception)
             {
-                // Key silinemese bile ana işlemin (kiralama vb.) devam etmesi sağlanır.
+                // Even if the key cannot be deleted, the main process (rental, etc.) continues.
             }
         }
 
