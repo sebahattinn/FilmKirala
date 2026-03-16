@@ -91,7 +91,7 @@ namespace FilmKirala.Report.Api.Services
                         using (MiniProfiler.Current?.Step("PLINQ: Mapping process"))
                         {
                             var activeThreads = new ConcurrentDictionary<int, byte>();
-                            currentBatchRows = movies.AsParallel()
+                            currentBatchRows = movies.AsParallel()                       //PQLİNQ starter
                                 .WithDegreeOfParallelism(Environment.ProcessorCount)
                                 .Select(m => {
                                     activeThreads.TryAdd(Thread.CurrentThread.ManagedThreadId, 0);

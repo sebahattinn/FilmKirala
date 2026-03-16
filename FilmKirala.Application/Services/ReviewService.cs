@@ -24,5 +24,28 @@ namespace FilmKirala.Application.Services
             await unitOfWork.Reviews.AddAsync(review);
             await unitOfWork.CompleteAsync();
         }
+
+        public async Task<IEnumerable<MyReviewDto>> GetMyReviewsAsync(int userId)
+        {
+            var reviews = (await unitOfWork.Reviews.FindAsync(r => r.UserId == userId))
+                .OrderByDescending(r => r.Id)
+                .ToList();
+
+            if (!reviews.Any()) return Enumerable.Empty<MyReviewDto>();
+
+            var movieIds = reviews.Select(r => r.MovieId).Distinct().ToList();
+            var movies = (await unitOfWork.Movies.FindAsync(m => movieIds.Contains(m.Id)))
+                .ToDictionary(m => m.Id);
+
+            return reviews.Select(r => new MyReviewDto
+            {
+                ReviewId  = r.Id,
+                MovieId   = r.MovieId,
+                MovieTitle = movies.TryGetValue(r.MovieId, out var movie) ? movie.Title : "Unknown",
+                Comment   = r.Comment,
+                Rating    = (int)r.Rating,
+                CreatedAt = r.CreatedAt
+            });
+        }
     }
 }

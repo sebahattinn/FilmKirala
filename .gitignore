@@ -170,3 +170,12 @@ artifacts/
 Thumbs.db
 ehthumbs.db
 Desktop.ini
+
+############################################################
+## --- JMETER ---
+############################################################
+
+apache-jmeter-5.6.3/
+jmeter_report/
+filmkirala_results.jtl
+filmkirala_test.jmx

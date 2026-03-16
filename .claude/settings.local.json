@@ -23,7 +23,16 @@
       "Bash(cd \"C:/Users/sebahattin/Desktop/Dengeage/3.Hafta/FilmKirala/FilmKirala\" && dotnet build FilmKirala.Test/FilmKirala.Test.csproj 2>&1 | tail -3 && dotnet test FilmKirala.Test/FilmKirala.Test.csproj --no-build 2>&1 | tail -3)",
       "Bash(cd \"C:/Users/sebahattin/Desktop/Dengeage/3.Hafta/FilmKirala/FilmKirala\" && dotnet build FilmKirala.Test/FilmKirala.Test.csproj 2>&1 | tail -2 && dotnet test FilmKirala.Test/FilmKirala.Test.csproj --no-build 2>&1 | tail -3)",
       "Bash(cd \"C:/Users/sebahattin/Desktop/Dengeage/3.Hafta/FilmKirala/FilmKirala\" && dotnet ef database update --project FilmKirala.Infrastructure --startup-project FilmKirala.Api 2>&1 | tail -8)",
-      "Bash(cd \"C:/Users/sebahattin/Desktop/Dengeage/3.Hafta/FilmKirala/FilmKirala\" && dotnet build --no-restore 2>&1 | tail -20)"
+      "Bash(cd \"C:/Users/sebahattin/Desktop/Dengeage/3.Hafta/FilmKirala/FilmKirala\" && dotnet build --no-restore 2>&1 | tail -20)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:5000/api/Movies 2>/dev/null || echo \"UNREACHABLE\")",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" https://localhost:7001/api/Movies -k 2>/dev/null\ncurl -s -o /dev/null -w \"%{http_code}\" http://localhost:5001/api/Movies 2>/dev/null\ncurl -s -o /dev/null -w \"%{http_code}\" http://localhost:5217/api/Movies 2>/dev/null)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:5269/api/Movies 2>/dev/null)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" -L http://localhost:5269/api/Movies 2>/dev/null)",
+      "Bash(cd \"C:/Users/sebahattin/Desktop/Dengeage/3.Hafta/FilmKirala/FilmKirala\" && \\\\\n  apache-jmeter-5.6.3/bin/jmeter.bat -n \\\\\n    -t filmkirala_test.jmx \\\\\n    -l filmkirala_results.jtl \\\\\n    -e -o jmeter_report \\\\\n    2>&1)",
+      "Bash(cd \"C:/Users/sebahattin/Desktop/Dengeage/3.Hafta/FilmKirala/FilmKirala\" && \\\\\n  apache-jmeter-5.6.3/bin/jmeter.bat -n \\\\\n    -t filmkirala_test.jmx \\\\\n    -l filmkirala_results.jtl \\\\\n    -e -o jmeter_report \\\\\n    -Dhttps.use.cached.ssl.context=false \\\\\n    -Djavax.net.ssl.trustStore=\"\" \\\\\n    -Djmeter.https.ssl.certificate.verifier=com.thoughtworks.xstream.io.naming.NoNameCoder \\\\\n    2>&1)",
+      "Bash(curl -s -X POST \"https://localhost:7075/api/Auth/register\" \\\\\n  -H \"Content-Type: application/json\" \\\\\n  -d \"{\\\\\"username\\\\\":\\\\\"jmetertest\\\\\",\\\\\"email\\\\\":\\\\\"jmeter@test.com\\\\\",\\\\\"password\\\\\":\\\\\"Test1234\\\\\"}\" \\\\\n  -k 2>/dev/null)",
+      "Bash(cd \"C:/Users/sebahattin/Desktop/Dengeage/3.Hafta/FilmKirala/FilmKirala\" && \\\\\n  apache-jmeter-5.6.3/bin/jmeter.bat -n \\\\\n    -t filmkirala_test.jmx \\\\\n    -l filmkirala_results.jtl \\\\\n    -e -o jmeter_report \\\\\n    -Dhttps.use.cached.ssl.context=false \\\\\n    2>&1)",
+      "Bash(cd \"C:/Users/sebahattin/Desktop/Dengeage/3.Hafta/FilmKirala/FilmKirala\" && \\\\\ndotnet build FilmKirala.sln --no-restore -v q 2>&1 | tail -10)"
     ]
   }
 }

@@ -29,5 +29,16 @@ namespace FilmKirala.Api.Controllers
             await _reviewService.AddReviewAsync(request, userId);
             return Ok(new { message = "Your review has been submitted successfully." });
         }
+
+        [HttpGet("my")]
+        public async Task<IActionResult> GetMyReviews()
+        {
+            var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out var userId))
+                return Unauthorized();
+
+            var reviews = await _reviewService.GetMyReviewsAsync(userId);
+            return Ok(reviews);
+        }
     }
 }

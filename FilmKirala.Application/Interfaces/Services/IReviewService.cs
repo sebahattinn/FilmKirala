@@ -5,5 +5,6 @@ namespace FilmKirala.Application.Interfaces.Services
     public interface IReviewService
     {
         Task AddReviewAsync(CreateReviewDto createReviewDto, int userId);
+        Task<IEnumerable<MyReviewDto>> GetMyReviewsAsync(int userId);
     }
 }
