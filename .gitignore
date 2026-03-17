@@ -138,6 +138,12 @@ docker-data/
 *.tar
 
 ############################################################
+## --- CLAUDE CODE ---
+############################################################
+
+.claude/
+
+############################################################
 ## --- SONARQUBE ---
 ############################################################
 
@@ -177,5 +183,12 @@ Desktop.ini
 
 apache-jmeter-5.6.3/
 jmeter_report/
+jmeter_report_new/
+jmeter_report_new2/
+jmeter_report_new3/
 filmkirala_results.jtl
+filmkirala_results_new.jtl
+filmkirala_results_new2.jtl
+filmkirala_results_new3.jtl
 filmkirala_test.jmx
+nginx.conf
