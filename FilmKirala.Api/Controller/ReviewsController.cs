@@ -41,10 +41,19 @@ namespace FilmKirala.Api.Controllers
         }
 
         [HttpGet("by-rating")]
-        public async Task<IActionResult> GetReviewsByRating([FromQuery] int rating = 3, [FromQuery] int? movieId = null)
+        public async Task<IActionResult> GetReviewsByRating([FromQuery] int rating = 3, [FromQuery] int? movieId = null, [FromQuery] int page = 1, [FromQuery] int pageSize = 50)
         {
-            var reviews = await _reviewService.GetReviewsByRatingAsync(rating, movieId);
-            return Ok(reviews);
+            var result = await _reviewService.GetReviewsByRatingAsync(rating, movieId, page, pageSize);
+
+            if (result.TotalCount == 0)
+            {
+                var message = movieId.HasValue
+                    ? $"No {rating}-star reviews found for movie ID {movieId}."
+                    : $"No {rating}-star reviews found.";
+                return NotFound(new { message });
+            }
+
+            return Ok(result);
         }
     }
 }

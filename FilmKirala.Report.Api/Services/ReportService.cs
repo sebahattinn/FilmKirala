@@ -74,8 +74,10 @@ namespace FilmKirala.Report.Api.Services
                     int processedCount = 0;
                     bool isFirstBatch = true;
                     int totalMovies = await conn.ExecuteScalarAsync<int>("SELECT COUNT(*) FROM Movies WITH (NOLOCK)");
+                    // XLSX: collect all rows in memory, write once at the end (InsertAsync overwrites rather than appends for XLSX)
+                    var xlsxAllRows = isCsv ? null : new List<object>();
 
-                    while (true)    
+                    while (true)
                     {
                         List<dynamic> movies;
                         using (MiniProfiler.Current?.Step($"Batch pulling (LastId: {lastId})"))
@@ -112,23 +114,37 @@ namespace FilmKirala.Report.Api.Services
                             Console.ResetColor();
                         }
 
-                        using (MiniProfiler.Current?.Step("IO: Writing to Disk with MiniExcel"))
+                        if (isCsv)
                         {
-                            var excelType = isCsv ? ExcelType.CSV : ExcelType.XLSX;
-
-                            if (isFirstBatch)
+                            using (MiniProfiler.Current?.Step("IO: Writing CSV batch to Disk"))
                             {
-                                await MiniExcel.SaveAsAsync(fullPath, currentBatchRows, excelType: excelType);
-                                isFirstBatch = false;
+                                if (isFirstBatch)
+                                {
+                                    await MiniExcel.SaveAsAsync(fullPath, currentBatchRows, excelType: ExcelType.CSV);
+                                    isFirstBatch = false;
+                                }
+                                else
+                                {
+                                    await MiniExcel.InsertAsync(fullPath, currentBatchRows, sheetName: "Sheet1", excelType: ExcelType.CSV);
+                                }
                             }
-                            else
-                            {
-                                await MiniExcel.InsertAsync(fullPath, currentBatchRows, sheetName: "Sheet1", excelType: excelType);
-                            }
+                        }
+                        else
+                        {
+                            xlsxAllRows!.AddRange(currentBatchRows);
                         }
 
                         processedCount += movies.Count;
                         lastId = (int)movies.Last().Id;
+                    }
+
+                    // XLSX: write all accumulated rows in one shot
+                    if (!isCsv && xlsxAllRows!.Count > 0)
+                    {
+                        using (MiniProfiler.Current?.Step("IO: Writing XLSX to Disk with MiniExcel"))
+                        {
+                            await MiniExcel.SaveAsAsync(fullPath, xlsxAllRows, excelType: ExcelType.XLSX);
+                        }
                     }
 
                     using (MiniProfiler.Current?.Step("DB:  Job Status is Being Updated"))

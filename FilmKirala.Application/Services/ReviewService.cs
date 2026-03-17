@@ -48,32 +48,40 @@ namespace FilmKirala.Application.Services
             });
         }
 
-        public async Task<IEnumerable<RatedReviewDto>> GetReviewsByRatingAsync(int rating, int? movieId)
+        public async Task<PagedResult<RatedReviewDto>> GetReviewsByRatingAsync(int rating, int? movieId, int page = 1, int pageSize = 50)
         {
             if (rating < 1 || rating > 5)
                 throw new ArgumentException("Rating must be between 1 and 5.");
 
-            var reviews = (await unitOfWork.Reviews.FindAsync(r =>
-                    (int)r.Rating == rating &&
-                    (!movieId.HasValue || r.MovieId == movieId.Value)))
-                .OrderByDescending(r => r.Id)
-                .ToList();
+            System.Linq.Expressions.Expression<Func<Review, bool>> predicate = r =>
+                (int)r.Rating == rating &&
+                (!movieId.HasValue || r.MovieId == movieId.Value);
 
-            if (!reviews.Any()) return Enumerable.Empty<RatedReviewDto>();
+            var reviews = (await unitOfWork.Reviews.GetPagedAsync(page, pageSize, predicate)).ToList();
+            var totalCount = await unitOfWork.Reviews.CountAsync(predicate);
+
+            if (!reviews.Any())
+                return new PagedResult<RatedReviewDto> { Items = [], TotalCount = 0, Page = page, PageSize = pageSize };
 
             var movieIds = reviews.Select(r => r.MovieId).Distinct().ToList();
             var movies = (await unitOfWork.Movies.FindAsync(m => movieIds.Contains(m.Id)))
                 .ToDictionary(m => m.Id);
 
-            return reviews.Select(r => new RatedReviewDto
+            return new PagedResult<RatedReviewDto>
             {
-                ReviewId   = r.Id,
-                MovieId    = r.MovieId,
-                MovieTitle = movies.TryGetValue(r.MovieId, out var m) ? m.Title : "Unknown",
-                Comment    = r.Comment,
-                Rating     = (int)r.Rating,
-                CreatedAt  = r.CreatedAt
-            });
+                Items = reviews.Select(r => new RatedReviewDto
+                {
+                    ReviewId   = r.Id,
+                    MovieId    = r.MovieId,
+                    MovieTitle = movies.TryGetValue(r.MovieId, out var m) ? m.Title : "Unknown",
+                    Comment    = r.Comment,
+                    Rating     = (int)r.Rating,
+                    CreatedAt  = r.CreatedAt
+                }).ToList(),
+                TotalCount = totalCount,
+                Page = page,
+                PageSize = pageSize
+            };
         }
     }
 }

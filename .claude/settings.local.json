@@ -75,7 +75,9 @@
       "Bash(__NEW_LINE_920224043718bfac__ powershell.exe -Command \"& ''$BASE/apache-jmeter-5.6.3/bin/jmeter.bat'' -n -t ''$BASE/filmkirala_test.jmx'' -l ''$BASE/filmkirala_results_new2.jtl'' -e -o ''$BASE/jmeter_report_new2''\")",
       "Bash(start:*)",
       "Bash(sqlcmd:*)",
-      "Bash(redis-cli ping:*)"
+      "Bash(redis-cli ping:*)",
+      "Bash(rm -rf \"$BASE/jmeter_report_new3\" \"$BASE/filmkirala_results_new3.jtl\")",
+      "Bash(powershell.exe -Command \"& ''$BASE/apache-jmeter-5.6.3/bin/jmeter.bat'' -n -t ''$BASE/filmkirala_test.jmx'' -l ''$BASE/filmkirala_results_new3.jtl'' -e -o ''$BASE/jmeter_report_new3''\")"
     ]
   }
 }
