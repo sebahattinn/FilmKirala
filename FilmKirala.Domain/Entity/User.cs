@@ -19,6 +19,7 @@ namespace FilmKirala.Domain.Entity
 
         public void AddRefreshToken(string token, DateTime expiryTime)
         {
+            _refreshTokens.RemoveAll(t => !t.IsActive);
             _refreshTokens.Add(new UserRefreshToken(token, expiryTime, Id));
         }
 
@@ -36,6 +37,12 @@ namespace FilmKirala.Domain.Entity
         {
             if (newBalance < 0) throw new ArgumentException("Bakiye 0'dan küçük olamaz!");
             WalletBalance = (int)newBalance;
+        }
+
+        public void AddBalance(int amount)
+        {
+            if (amount <= 0) throw new ArgumentException("Yüklenecek tutar 0'dan büyük olmalıdır.");
+            WalletBalance += amount;
         }
     }
 }

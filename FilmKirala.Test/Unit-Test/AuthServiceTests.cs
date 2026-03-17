@@ -38,12 +38,11 @@ namespace FilmKirala.Test.UnitTests
         [Fact]
         public async Task UpdateUserBalanceAsync_ShouldHandleNegativeBalance_ByDomainRules()
         {
-            // Arrange
+         
             var email = "seba@bursa.com";
             var user = new User("Seba", email, "h", "s", 100, Roles.User);
             _uowMock.Setup(x => x.Users.GetByEmailAsync(email)).ReturnsAsync(user);
 
-            // 🚀 FIX: S112 uyumu için artık Exception değil ArgumentException bekliyoruz
             await Assert.ThrowsAsync<ArgumentException>(() => _authService.UpdateUserBalanceAsync(email, -50));
         }
     }

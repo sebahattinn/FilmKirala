@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using FilmKirala.Infrastructure.Persistence;
 using FilmKirala.Application.Services;
 using FilmKirala.Infrastructure.Repositories;
@@ -10,7 +10,6 @@ using FilmKirala.Application.Interfaces.Services;
 using Moq;
 using Xunit;
 using Microsoft.Extensions.Logging.Abstractions;
-using System.Linq;
 
 namespace FilmKirala.Test.IntegrationTests
 {
@@ -24,14 +23,14 @@ namespace FilmKirala.Test.IntegrationTests
             return new AppDbContext(options);
         }
 
-        // Helper metot: Tekrarlanan UoW kurulumunu merkezi hale getirdik
         private IUnitOfWork CreateUnitOfWork(AppDbContext context)
         {
             var movieRepo = new MovieRepository(context, NullLogger<MovieRepository>.Instance);
             var userRepo = new UserRepository(context, NullLogger<UserRepository>.Instance);
+            var pricingRepo = new RentalPricingRepository(context, NullLogger<RentalPricingRepository>.Instance);
             var loggerFactory = new NullLoggerFactory();
 
-            return new UnitOfWork(context, movieRepo, userRepo, loggerFactory);
+            return new UnitOfWork(context, movieRepo, userRepo, pricingRepo, loggerFactory);
         }
 
         [Fact]
@@ -46,17 +45,15 @@ namespace FilmKirala.Test.IntegrationTests
 
             var user = new User("PoorUser", "poor@test.com", "h", "s", 100, Roles.User);
             var movie = new Movie("Expensive Film", "Desc", "Genre", 10, true);
-
             movie.AddRentalPricing(DurationType.Günlük, 1, 500);
 
             await context.Users.AddAsync(user);
             await context.Movies.AddAsync(movie);
             await uow.CompleteAsync();
 
-            var pricingId = movie.RentalPricings.First().Id;
-            var rentRequest = new RentRequestDto(movie.Id, pricingId);
+            var rentRequest = new RentRequestDto(movie.Id, DurationType.Günlük);
 
-            await Assert.ThrowsAsync<InvalidOperationException>(() => rentalService.RentMovieAsync(rentRequest, user.Id));
+            await Assert.ThrowsAsync<InvalidOperationException>(() => rentalService.CreateRentalAsync(rentRequest, user.Id));
         }
 
         [Fact]
@@ -77,10 +74,9 @@ namespace FilmKirala.Test.IntegrationTests
             await context.Movies.AddAsync(movie);
             await uow.CompleteAsync();
 
-            var pricingId = movie.RentalPricings.First().Id;
-            var rentRequest = new RentRequestDto(movie.Id, pricingId);
+            var rentRequest = new RentRequestDto(movie.Id, DurationType.Günlük);
 
-            await Assert.ThrowsAsync<InvalidOperationException>(() => rentalService.RentMovieAsync(rentRequest, user.Id));
+            await Assert.ThrowsAsync<InvalidOperationException>(() => rentalService.CreateRentalAsync(rentRequest, user.Id));
         }
 
         [Fact]
@@ -95,17 +91,15 @@ namespace FilmKirala.Test.IntegrationTests
 
             var user = new User("Tester", "test@test.com", "h", "s", 1000, Roles.User);
             var movie = new Movie("Matrix", "Desc", "Sci-Fi", 10, true);
-
             movie.AddRentalPricing(DurationType.Günlük, 2, 50);
 
             await context.Users.AddAsync(user);
             await context.Movies.AddAsync(movie);
             await uow.CompleteAsync();
 
-            var pricingId = movie.RentalPricings.First().Id;
-            var rentRequest = new RentRequestDto(movie.Id, pricingId);
+            var rentRequest = new RentRequestDto(movie.Id, DurationType.Günlük);
 
-            var result = await rentalService.RentMovieAsync(rentRequest, user.Id);
+            var result = await rentalService.CreateRentalAsync(rentRequest, user.Id);
 
             Assert.True(result.RentalEndDate > DateTime.UtcNow.AddDays(1));
         }

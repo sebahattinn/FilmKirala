@@ -32,8 +32,8 @@ namespace FilmKirala.Report.Api.Services
             _exportPath = Path.Combine(parentDir, "FilmKiralaExports");
         }
 
-        // DB'ye Pending kaydı atar, JobId döner 
-        public async Task<string> EnqueueReportAsync(bool isCsv)
+        // Inserts a pending record into the database, returns the JobId 
+        public async Task<string> QueueReportAsync(bool isCsv)
         {
             var jobId = Guid.NewGuid().ToString("N")[..8];
             var job = ReportJob.Create(jobId, isCsv);
@@ -42,10 +42,10 @@ namespace FilmKirala.Report.Api.Services
             return jobId;
         }
 
-        // BackgroundWorker tarafından çağrılır
+        // Called by BackgroundWorker
         public async Task CreateLargeReportInBackgroundAsync(string jobId, bool isCsv)
         {
-            using (MiniProfiler.Current?.Step($"Arka Plan Raporu: {jobId}"))
+            using (MiniProfiler.Current?.Step($"Background Report: {jobId}"))
             {
                 Stopwatch sw = Stopwatch.StartNew();
                 if (!Directory.Exists(_exportPath)) Directory.CreateDirectory(_exportPath);
@@ -56,11 +56,12 @@ namespace FilmKirala.Report.Api.Services
                 using (var scope = _scopeFactory.CreateScope())
                 {
                     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-                    using var conn = new Microsoft.Data.SqlClient.SqlConnection(_configuration.GetConnectionString("DefaultConnection"));
-                    if (conn.State == ConnectionState.Closed) await conn.OpenAsync();
+                    // Single connection: EF Core's underlying connection is reused by Dapper.
+                    await db.Database.OpenConnectionAsync();
+                    var conn = db.Database.GetDbConnection();
 
                     Dictionary<int, int> rentalDict;
-                    using (MiniProfiler.Current?.Step("DB: Kiralama Sayılarını Gruplayarak Çekme"))
+                    using (MiniProfiler.Current?.Step("DB: Pulling by Grouping Rental Numbers"))
                     {
                         var rentals = await SqlMapper.QueryAsync<(int MovieId, int Count)>(conn,
                             "SELECT MovieId, COUNT(*) as Count FROM Rentals WITH (NOLOCK) GROUP BY MovieId",
@@ -73,11 +74,13 @@ namespace FilmKirala.Report.Api.Services
                     int processedCount = 0;
                     bool isFirstBatch = true;
                     int totalMovies = await conn.ExecuteScalarAsync<int>("SELECT COUNT(*) FROM Movies WITH (NOLOCK)");
+                    // XLSX: collect all rows in memory, write once at the end (InsertAsync overwrites rather than appends for XLSX)
+                    var xlsxAllRows = isCsv ? null : new List<object>();
 
                     while (true)
                     {
                         List<dynamic> movies;
-                        using (MiniProfiler.Current?.Step($"Batch Çekiliyor (LastId: {lastId})"))
+                        using (MiniProfiler.Current?.Step($"Batch pulling (LastId: {lastId})"))
                         {
                             movies = (await SqlMapper.QueryAsync(conn,
                                 "SELECT Id, Title, Genre FROM Movies WHERE Id > @lastId ORDER BY Id OFFSET 0 ROWS FETCH NEXT @batchSize ROWS ONLY",
@@ -88,10 +91,10 @@ namespace FilmKirala.Report.Api.Services
                         if (!movies.Any()) break;
 
                         List<object> currentBatchRows;
-                        using (MiniProfiler.Current?.Step("PLINQ: Mapping İşlemi"))
+                        using (MiniProfiler.Current?.Step("PLINQ: Mapping process"))
                         {
                             var activeThreads = new ConcurrentDictionary<int, byte>();
-                            currentBatchRows = movies.AsParallel()
+                            currentBatchRows = movies.AsParallel()                       //PQLİNQ starter
                                 .WithDegreeOfParallelism(Environment.ProcessorCount)
                                 .Select(m => {
                                     activeThreads.TryAdd(Thread.CurrentThread.ManagedThreadId, 0);
@@ -107,30 +110,44 @@ namespace FilmKirala.Report.Api.Services
                             var threadList = string.Join(",", activeThreads.Keys.OrderBy(x => x));
                             double progress = (double)(processedCount + movies.Count) / totalMovies * 100;
                             Console.ForegroundColor = ConsoleColor.Cyan;
-                            Console.Write($"\r[BATCH] %{progress:F1} | İşçiler: [{threadList}] | Job: {jobId}");
+                            Console.Write($"\r[BATCH] %{progress:F1} | Workers: [{threadList}] | Job: {jobId}");
                             Console.ResetColor();
                         }
 
-                        using (MiniProfiler.Current?.Step("IO: MiniExcel ile Diske Yazma"))
+                        if (isCsv)
                         {
-                            var excelType = isCsv ? ExcelType.CSV : ExcelType.XLSX;
-
-                            if (isFirstBatch)
+                            using (MiniProfiler.Current?.Step("IO: Writing CSV batch to Disk"))
                             {
-                                await MiniExcel.SaveAsAsync(fullPath, currentBatchRows, excelType: excelType);
-                                isFirstBatch = false;
+                                if (isFirstBatch)
+                                {
+                                    await MiniExcel.SaveAsAsync(fullPath, currentBatchRows, excelType: ExcelType.CSV);
+                                    isFirstBatch = false;
+                                }
+                                else
+                                {
+                                    await MiniExcel.InsertAsync(fullPath, currentBatchRows, sheetName: "Sheet1", excelType: ExcelType.CSV);
+                                }
                             }
-                            else
-                            {
-                                await MiniExcel.InsertAsync(fullPath, currentBatchRows, sheetName: "Sheet1", excelType: excelType);
-                            }
+                        }
+                        else
+                        {
+                            xlsxAllRows!.AddRange(currentBatchRows);
                         }
 
                         processedCount += movies.Count;
                         lastId = (int)movies.Last().Id;
                     }
 
-                    using (MiniProfiler.Current?.Step("DB: Job Durumu Güncelleniyor"))
+                    // XLSX: write all accumulated rows in one shot
+                    if (!isCsv && xlsxAllRows!.Count > 0)
+                    {
+                        using (MiniProfiler.Current?.Step("IO: Writing XLSX to Disk with MiniExcel"))
+                        {
+                            await MiniExcel.SaveAsAsync(fullPath, xlsxAllRows, excelType: ExcelType.XLSX);
+                        }
+                    }
+
+                    using (MiniProfiler.Current?.Step("DB:  Job Status is Being Updated"))
                     {
                         var reportJob = await db.ReportJobs.FirstOrDefaultAsync(j => j.JobId == jobId);
                         if (reportJob != null)
@@ -139,19 +156,18 @@ namespace FilmKirala.Report.Api.Services
                             await db.SaveChangesAsync();
                         }
                     }
-
-                    // --- DÜZELTİLEN KISIM BURASI ---
-                    using (MiniProfiler.Current?.Step("DB: Bildirim Kaydı Atılıyor"))
+                  
+                    using (MiniProfiler.Current?.Step("DB: Notification Record is Being Created"))
                     {
-                        // Yeni Constructor: Sadece 4 temel parametre veriyoruz.
+                        // Constructor We only provide 4 basic parameters.
                         var notification = new NotificationLog(
                             userEmail: "admin@filmkirala.com",
-                            subject: "Rapor Hazır",
-                            message: $"Rapor bitti. JobId: {jobId} | Süre: {sw.Elapsed.TotalSeconds:F1}s",
+                            subject: "Rapor Ready",
+                            message: $"Rapor Ended. JobId: {jobId} | Süre: {sw.Elapsed.TotalSeconds:F1}s",
                             type: isCsv ? "CSV" : "XLSX"
                         );
 
-                        // Rapor hazır olduğuna göre durumu "Sent" (Gönderildi) olarak işaretleyebiliriz.
+                        // Since the report is ready, we can mark the status as “Sent.”
                         notification.MarkAsSent();
 
                         db.NotificationLogs.Add(notification);
@@ -160,10 +176,10 @@ namespace FilmKirala.Report.Api.Services
                 }
 
                 sw.Stop();
-                Console.WriteLine($"\n Rapor Bitti! JobId: {jobId} | Süre: {sw.Elapsed.TotalSeconds:F1} sn.\n");
+                Console.WriteLine($"\n Report Complete! JobId: {jobId} | Süre: {sw.Elapsed.TotalSeconds:F1} sn.\n");
             }
         }
-
+        
         public async Task<(bool IsReady, byte[]? FileBytes, string? FileName)> GetReportFileAsync(string jobId)
         {
             var job = await _context.ReportJobs.FirstOrDefaultAsync(j => j.JobId == jobId);
@@ -185,7 +201,7 @@ namespace FilmKirala.Report.Api.Services
             }
         }
 
-        // DB'deki job durumunu string olarak dönüyoruz.
+        // We are converting the job status in the database to a string.
         public async Task<string> GetJobStatusAsync(string jobId)
         {
             var job = await _context.ReportJobs.FirstOrDefaultAsync(j => j.JobId == jobId);
@@ -200,11 +216,9 @@ namespace FilmKirala.Report.Api.Services
                 _ => "Unknown"
             };
         }
-
         public async Task<object> GetMovieSummaryAsync(int lastId, int pageSize)
         {
-            using var scope = _scopeFactory.CreateScope();
-            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            // Single connection: no extra EF Core scope needed since only Dapper queries run here.
             using var conn = new Microsoft.Data.SqlClient.SqlConnection(_configuration.GetConnectionString("DefaultConnection"));
             if (conn.State == ConnectionState.Closed) await conn.OpenAsync();
 
@@ -249,13 +263,20 @@ namespace FilmKirala.Report.Api.Services
             if (lastId.HasValue) query = query.Where(m => m.Id > lastId.Value);
             if (pageSize.HasValue) query = query.Take(pageSize.Value);
 
-            return query.Select(m => new
-            {
-                FilmId = m.Id,
-                FilmAdi = m.Title,
-                Tur = m.Genre,
-                KiralamaSayisi = _context.Rentals.Count(r => r.MovieId == m.Id)
-            });
+            // LEFT JOIN with GROUP BY — single SQL query, no correlated subquery per row.
+            return query
+                .GroupJoin(
+                    _context.Rentals.AsNoTracking(),
+                    m => m.Id,
+                    r => r.MovieId,
+                    (m, rentals) => new { m, RentalCount = rentals.Count() })
+                .Select(x => (object)new
+                {
+                    FilmId = x.m.Id,
+                    FilmAdi = x.m.Title,
+                    Tur = x.m.Genre,
+                    KiralamaSayisi = x.RentalCount
+                });
         }
     }
 }

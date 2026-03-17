@@ -11,6 +11,9 @@ namespace FilmKirala.Infrastructure.Persistence.Configurations
             builder.HasKey(rp => rp.Id);
 
             builder.Property(rp => rp.Price).IsRequired().HasPrecision(18, 2);
+
+            // Aynı filme aynı türde iki fiyat paketi eklenemez
+            builder.HasIndex(rp => new { rp.MovieId, rp.DurationType }).IsUnique();
         }
     }
 }

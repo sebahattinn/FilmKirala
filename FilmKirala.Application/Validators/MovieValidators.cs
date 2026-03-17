@@ -46,8 +46,8 @@ namespace FilmKirala.Application.Validators
                 .GreaterThan(0).WithMessage("Geçersiz Film ID.");
 
             RuleFor(x => x.Title)
-                .NotEmpty().WithMessage("Film adı boş olamaz.")
-                .MaximumLength(300);
+                .MaximumLength(300).WithMessage("Film adı 300 karakteri geçemez.")
+                .When(x => x.Title != null);
 
             RuleFor(x => x.Stock)
                 .GreaterThanOrEqualTo(0).WithMessage("Stok eksi olamaz.");

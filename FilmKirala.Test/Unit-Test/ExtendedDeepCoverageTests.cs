@@ -3,6 +3,7 @@ using Xunit;
 using FilmKirala.Application.Services;
 using FilmKirala.Application.DTOs;
 using FilmKirala.Application.Interfaces;
+using FilmKirala.Application.Interfaces.Services;
 using FilmKirala.Domain.Entity;
 using FilmKirala.Domain.Enums;
 using FilmKirala.Infrastructure.Repositories;
@@ -26,7 +27,8 @@ namespace FilmKirala.Test.UnitTests
         public async Task MovieService_FullLogic_Coverage()
         {
             var uowMock = new Mock<IUnitOfWork>();
-            var movieService = new MovieService(uowMock.Object, null!);
+            var cacheMock = new Mock<ICacheService>();
+            var movieService = new MovieService(uowMock.Object, null!, cacheMock.Object);
 
             uowMock.Setup(x => x.Movies.GetMovieWithDetailsAsync(It.IsAny<int>())).ReturnsAsync((Movie)null!);
 

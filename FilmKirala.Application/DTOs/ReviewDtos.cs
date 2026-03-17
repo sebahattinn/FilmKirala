@@ -19,4 +19,26 @@ namespace FilmKirala.Application.DTOs
         [Key(3)] public int Rating { get; init; }
         [Key(4)] public DateTime CreatedAt { get; init; }
     }
+
+    [MessagePackObject]
+    public record RatedReviewDto
+    {
+        [Key(0)] public int ReviewId { get; init; }
+        [Key(1)] public int MovieId { get; init; }
+        [Key(2)] public required string MovieTitle { get; init; }
+        [Key(3)] public required string Comment { get; init; }
+        [Key(4)] public int Rating { get; init; }
+        [Key(5)] public DateTime CreatedAt { get; init; }
+    }
+
+    [MessagePackObject]
+    public record MyReviewDto
+    {
+        [Key(0)] public int ReviewId { get; init; }
+        [Key(1)] public int MovieId { get; init; }
+        [Key(2)] public required string MovieTitle { get; init; }
+        [Key(3)] public required string Comment { get; init; }
+        [Key(4)] public int Rating { get; init; }
+        [Key(5)] public DateTime CreatedAt { get; init; }
+    }
 }

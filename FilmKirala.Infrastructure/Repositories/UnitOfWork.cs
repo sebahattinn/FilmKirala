@@ -15,25 +15,26 @@ namespace FilmKirala.Infrastructure.Repositories
         public UnitOfWork(AppDbContext context,
                           IMovieRepository movieRepository,
                           IUserRepository userRepository,
-                          ILoggerFactory loggerFactory) // DI üzerinden fabrikaya ulaşıyoruz
+                          IRentalPricingRepository rentalPricingRepository,
+                          ILoggerFactory loggerFactory)
         {
             _context = context;
             _loggerFactory = loggerFactory;
             Movies = movieRepository;
             Users = userRepository;
+            RentalPricings = rentalPricingRepository;
 
-            // Her bir generic repository için ilgili tipte logger oluşturup içeri gönderiyoruz
             Rentals = new GenericRepository<Rental>(_context, _loggerFactory.CreateLogger<GenericRepository<Rental>>());
             Reviews = new GenericRepository<Review>(_context, _loggerFactory.CreateLogger<GenericRepository<Review>>());
-            RentalPricings = new GenericRepository<RentalPricing>(_context, _loggerFactory.CreateLogger<GenericRepository<RentalPricing>>());
             NotificationLogs = new GenericRepository<NotificationLog>(_context, _loggerFactory.CreateLogger<GenericRepository<NotificationLog>>());
+           
         }
 
         public IMovieRepository Movies { get; }
         public IUserRepository Users { get; }
         public IGenericRepository<Rental> Rentals { get; }
         public IGenericRepository<Review> Reviews { get; }
-        public IGenericRepository<RentalPricing> RentalPricings { get; }
+        public IRentalPricingRepository RentalPricings { get; }
         public IGenericRepository<NotificationLog> NotificationLogs { get; }
 
         public async Task<int> CompleteAsync() => await _context.SaveChangesAsync();

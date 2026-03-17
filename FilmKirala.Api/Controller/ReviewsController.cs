@@ -1,4 +1,4 @@
-﻿using FilmKirala.Application.DTOs;
+using FilmKirala.Application.DTOs;
 using FilmKirala.Application.Interfaces.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -8,7 +8,7 @@ namespace FilmKirala.Api.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    [Authorize] 
+    [Authorize]
     public class ReviewsController : ControllerBase
     {
         private readonly IReviewService _reviewService;
@@ -19,22 +19,41 @@ namespace FilmKirala.Api.Controllers
         }
 
         [HttpPost]
-        public async Task<IActionResult> AddReview([FromBody] CreateReviewDto request)
+        public async Task<IActionResult> CreateReview([FromBody] CreateReviewDto request)
         {
-            var userIdString = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            if (string.IsNullOrEmpty(userIdString)) return Unauthorized();
+            var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out var userId))
+                return Unauthorized();
 
-            int userId = int.Parse(userIdString);
+            await _reviewService.AddReviewAsync(request, userId);
+            return Ok(new { message = "Your review has been submitted successfully." });
+        }
 
-            try
+        [HttpGet("my")]
+        public async Task<IActionResult> GetMyReviews()
+        {
+            var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out var userId))
+                return Unauthorized();
+
+            var reviews = await _reviewService.GetMyReviewsAsync(userId);
+            return Ok(reviews);
+        }
+
+        [HttpGet("by-rating")]
+        public async Task<IActionResult> GetReviewsByRating([FromQuery] int rating = 3, [FromQuery] int? movieId = null, [FromQuery] int page = 1, [FromQuery] int pageSize = 50)
+        {
+            var result = await _reviewService.GetReviewsByRatingAsync(rating, movieId, page, pageSize);
+
+            if (result.TotalCount == 0)
             {
-                await _reviewService.AddReviewAsync(request, userId);
-                return Ok(new { message = "Yorumunuz eklendi." });
+                var message = movieId.HasValue
+                    ? $"No {rating}-star reviews found for movie ID {movieId}."
+                    : $"No {rating}-star reviews found.";
+                return NotFound(new { message });
             }
-            catch (Exception ex)
-            {
-                return BadRequest(new { error = ex.Message });
-            }
+
+            return Ok(result);
         }
     }
 }

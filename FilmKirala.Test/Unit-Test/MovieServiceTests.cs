@@ -5,6 +5,7 @@ using FilmKirala.Application.Services;
 using FilmKirala.Application.DTOs;
 using FilmKirala.Application.Interfaces;
 using FilmKirala.Application.Interfaces.Repositories;
+using FilmKirala.Application.Interfaces.Services;
 using FilmKirala.Domain.Entity;
 
 namespace FilmKirala.Test.UnitTests
@@ -14,6 +15,7 @@ namespace FilmKirala.Test.UnitTests
         private readonly Mock<IUnitOfWork> _uowMock;
         private readonly Mock<IMovieRepository> _movieRepoMock;
         private readonly Mock<IMapper> _mapperMock;
+        private readonly Mock<ICacheService> _cacheMock;
         private readonly MovieService _movieService;
 
         public MovieServiceTests()
@@ -21,17 +23,17 @@ namespace FilmKirala.Test.UnitTests
             _uowMock = new Mock<IUnitOfWork>();
             _movieRepoMock = new Mock<IMovieRepository>();
             _mapperMock = new Mock<IMapper>();
+            _cacheMock = new Mock<ICacheService>();
 
-            // UnitOfWork içindeki Movies çağrıldığında sahte repository'yi dönmesini sağladık
+            // UnitOfWork içindeki Movies çağrıldığında sahte repository'yi dönmesini sağladım
             _uowMock.Setup(x => x.Movies).Returns(_movieRepoMock.Object);
 
-            _movieService = new MovieService(_uowMock.Object, _mapperMock.Object);
+            _movieService = new MovieService(_uowMock.Object, _mapperMock.Object, _cacheMock.Object);
         }
 
         [Fact]
-        public async Task AddMovieAsync_ShouldCallRepositoryAdd_WhenRequestIsValid()
+        public async Task CreateMovieAsync_ShouldCallRepositoryAdd_WhenRequestIsValid()
         {
-            // Arrange (Senin DTO yapına göre nesne oluşturma kısmını düzelttik)
             var dto = new CreateMovieDto
             {
                 Title = "Inception",
@@ -41,14 +43,12 @@ namespace FilmKirala.Test.UnitTests
                 Pricings = new List<PricingDto>()
             };
 
-            // Act
-            await _movieService.AddMovieAsync(dto);
+           
+            await _movieService.CreateMovieAsync(dto);
 
-            // Assert
-            // Movie nesnesinin repository'ye bir kez eklendiğini doğrula
+         
             _movieRepoMock.Verify(x => x.AddAsync(It.IsAny<Movie>()), Times.Once);
 
-            // Veritabanı commit işleminin (SaveChangesAsync/CompleteAsync) çağrıldığını doğrula
             _uowMock.Verify(x => x.CompleteAsync(), Times.Once);
         }
     }

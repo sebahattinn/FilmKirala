@@ -3,7 +3,7 @@
     public interface IReportService
     {
    
-        Task<string> EnqueueReportAsync(bool isCsv);
+        Task<string> QueueReportAsync(bool isCsv);
 
         // BackgroundWorker tarafından çağrılır: asıl Excel/CSV üretim işi
         Task CreateLargeReportInBackgroundAsync(string jobId, bool isCsv);

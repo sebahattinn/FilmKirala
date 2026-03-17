@@ -1,4 +1,4 @@
-﻿using FilmKirala.Application.DTOs;
+using FilmKirala.Application.DTOs;
 using FilmKirala.Application.Interfaces.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -8,36 +8,31 @@ namespace FilmKirala.Api.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    [AllowAnonymous] // Test sürecinde açık kalabilir ama UserId kontrolü artık sıkı.
+    [Authorize]
     public class RentalsController : ControllerBase
     {
         private readonly IRentalService _rentalService;
         public RentalsController(IRentalService rentalService) => _rentalService = rentalService;
 
-        [HttpPost("rent")]
-        public async Task<IActionResult> RentMovie([FromBody] RentRequestDto request)
+        [HttpPost]
+        public async Task<IActionResult> CreateRental([FromBody] RentRequestDto request)
         {
             var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
             if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out var userId))
-            {
-               
-                return Unauthorized("Kiralama yapmak için giriş yapmalısınız.");
-            }
+                return Unauthorized("You must be logged in to rent a movie.");
 
-            var result = await _rentalService.RentMovieAsync(request, userId);
+            var result = await _rentalService.CreateRentalAsync(request, userId);
             return Ok(result);
         }
 
-        [HttpGet("my-rentals")]
-        public async Task<IActionResult> GetMyRentals()
+        [HttpGet]
+        public async Task<IActionResult> GetRentals()
         {
             var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
             if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out var userId))
-            {
-                return Unauthorized("Kiralamalarınızı görmek için giriş yapmalısınız.");
-            }
+                return Unauthorized("You must be logged in to view your rentals.");
 
             var rentals = await _rentalService.GetUserRentalsAsync(userId);
             return Ok(rentals);

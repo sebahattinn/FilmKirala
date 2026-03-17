@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using FilmKirala.Infrastructure.Persistence;
 using FilmKirala.Application.Services;
 using FilmKirala.Infrastructure.Repositories;
@@ -9,7 +9,6 @@ using FilmKirala.Application.Interfaces;
 using FilmKirala.Application.Interfaces.Services;
 using Moq;
 using Xunit;
-using System.Linq;
 using Microsoft.Extensions.Logging.Abstractions;
 
 namespace FilmKirala.Test.IntegrationTests
@@ -28,9 +27,10 @@ namespace FilmKirala.Test.IntegrationTests
         {
             var movieRepo = new MovieRepository(context, NullLogger<MovieRepository>.Instance);
             var userRepo = new UserRepository(context, NullLogger<UserRepository>.Instance);
+            var pricingRepo = new RentalPricingRepository(context, NullLogger<RentalPricingRepository>.Instance);
             var loggerFactory = new NullLoggerFactory();
 
-            return new UnitOfWork(context, movieRepo, userRepo, loggerFactory);
+            return new UnitOfWork(context, movieRepo, userRepo, pricingRepo, loggerFactory);
         }
 
         [Fact]
@@ -45,17 +45,15 @@ namespace FilmKirala.Test.IntegrationTests
 
             var user = new User("Seba", "test@test.com", "h", "s", 100, Roles.User);
             var movie = new Movie("Batman", "Desc", "Action", 5, true);
-
             movie.AddRentalPricing(DurationType.Günlük, 1, 150);
 
             await context.Users.AddAsync(user);
             await context.Movies.AddAsync(movie);
             await context.SaveChangesAsync();
 
-            var pricingId = movie.RentalPricings.First().Id;
-            var request = new RentRequestDto(movie.Id, pricingId);
+            var request = new RentRequestDto(movie.Id, DurationType.Günlük);
 
-            await Assert.ThrowsAsync<InvalidOperationException>(() => service.RentMovieAsync(request, user.Id));
+            await Assert.ThrowsAsync<InvalidOperationException>(() => service.CreateRentalAsync(request, user.Id));
 
             var dbUser = await context.Users.FindAsync(user.Id);
             Assert.Equal(100, dbUser!.WalletBalance);
@@ -79,11 +77,10 @@ namespace FilmKirala.Test.IntegrationTests
             await context.Movies.AddAsync(movie);
             await context.SaveChangesAsync();
 
-            var pricingId = movie.RentalPricings.First().Id;
-            var request = new RentRequestDto(movie.Id, pricingId);
+            var request = new RentRequestDto(movie.Id, DurationType.Günlük);
 
-            var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => service.RentMovieAsync(request, user.Id));
-            Assert.Contains("stok", ex.Message.ToLower());
+            var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => service.CreateRentalAsync(request, user.Id));
+            Assert.Contains("stock", ex.Message.ToLower());
         }
 
         [Fact]
@@ -103,10 +100,10 @@ namespace FilmKirala.Test.IntegrationTests
             await context.Movies.AddAsync(movie);
             await context.SaveChangesAsync();
 
-            var request = new RentRequestDto(movie.Id, 999);
+            var request = new RentRequestDto(movie.Id, DurationType.Haftalık);
 
-            var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => service.RentMovieAsync(request, user.Id));
-            Assert.Contains("fiyat", ex.Message.ToLower());
+            var ex = await Assert.ThrowsAsync<KeyNotFoundException>(() => service.CreateRentalAsync(request, user.Id));
+            Assert.Contains("haftalık", ex.Message.ToLower());
         }
 
         [Fact]
@@ -127,10 +124,9 @@ namespace FilmKirala.Test.IntegrationTests
             await context.Movies.AddAsync(movie);
             await context.SaveChangesAsync();
 
-            var pricingId = movie.RentalPricings.First().Id;
-            var request = new RentRequestDto(movie.Id, pricingId);
+            var request = new RentRequestDto(movie.Id, DurationType.Saatlik);
 
-            var result = await service.RentMovieAsync(request, user.Id);
+            var result = await service.CreateRentalAsync(request, user.Id);
 
             var expectedDate = DateTime.UtcNow.AddHours(3);
             Assert.True(Math.Abs((result.RentalEndDate - expectedDate).TotalMinutes) < 1);

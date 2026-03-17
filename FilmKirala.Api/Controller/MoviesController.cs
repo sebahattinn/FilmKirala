@@ -2,6 +2,7 @@
 using FilmKirala.Application.Interfaces.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.OutputCaching;
 
 namespace FilmKirala.Api.Controllers
 {
@@ -17,6 +18,7 @@ namespace FilmKirala.Api.Controllers
         }
 
         [HttpGet]
+        [OutputCache(Duration = 30)]
         public async Task<IActionResult> GetAll(
             [FromQuery] string? search,
             [FromQuery] string? genre,
@@ -36,10 +38,10 @@ namespace FilmKirala.Api.Controllers
 
         [Authorize(Roles = "Admin")]
         [HttpPost]
-        public async Task<IActionResult> Add([FromBody] CreateMovieDto request)
+        public async Task<IActionResult> CreateMovie([FromBody] CreateMovieDto request)
         {
-            await _movieService.AddMovieAsync(request);
-            return Ok(new { message = "Film başarıyla eklendi." });
+            await _movieService.CreateMovieAsync(request);
+            return CreatedAtAction(nameof(GetById), new { }, new { message = "Movie created successfully." });
         }
     }
 }

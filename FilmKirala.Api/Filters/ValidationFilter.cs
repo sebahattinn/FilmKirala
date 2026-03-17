@@ -9,14 +9,17 @@ namespace FilmKirala.Api.Filters
         {
             if (!context.ModelState.IsValid)
             {
-                var errors = context.ModelState.Values
-                    .SelectMany(v => v.Errors)
-                    .Select(e => e.ErrorMessage)
-                    .ToList();
+                var errors = context.ModelState
+                    .Where(x => x.Value?.Errors.Count > 0)
+                    .ToDictionary(
+                        kvp => kvp.Key,
+                        kvp => kvp.Value?.Errors.Select(e => e.ErrorMessage).ToArray()
+                    );
 
+             
                 context.Result = new BadRequestObjectResult(new
                 {
-                    Message = "Validasyon hatası oluştu.",
+                    Message = "Validasyon hatası: Gönderdiğiniz veriler beklenen formatta değil.",
                     Errors = errors
                 });
             }
