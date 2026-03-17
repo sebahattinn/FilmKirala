@@ -2,6 +2,7 @@
 using FilmKirala.Application.Interfaces.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.OutputCaching;
 
 namespace FilmKirala.Api.Controllers
 {
@@ -17,6 +18,7 @@ namespace FilmKirala.Api.Controllers
         }
 
         [HttpGet]
+        [OutputCache(Duration = 30)]
         public async Task<IActionResult> GetAll(
             [FromQuery] string? search,
             [FromQuery] string? genre,

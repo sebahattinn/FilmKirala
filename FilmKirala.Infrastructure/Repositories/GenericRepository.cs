@@ -60,6 +60,14 @@ namespace FilmKirala.Infrastructure.Repositories
             }
         }
 
+        public async Task<int> CountAsync(Expression<Func<T, bool>>? predicate = null)
+        {
+            IQueryable<T> query = _dbSet.AsNoTracking();
+            if (predicate != null)
+                query = query.Where(predicate);
+            return await query.CountAsync();
+        }
+
         public async Task AddAsync(T entity) => await _dbSet.AddAsync(entity);
 
         public async Task<T?> GetByIdAsync(int id) => await _dbSet.FindAsync(id);

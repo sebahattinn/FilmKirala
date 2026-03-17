@@ -1,5 +1,8 @@
 using System.Text;
+using System.Threading.RateLimiting;
+using FilmKirala.Api.BackgroundServices;
 using FilmKirala.Api.Filters;
+using FilmKirala.Api.HealthChecks;
 using FilmKirala.Api.Middlewares;
 using FilmKirala.Application.Interfaces;
 using FilmKirala.Application.Interfaces.Repositories;
@@ -18,7 +21,9 @@ using MessagePack;
 using MessagePack.Resolvers;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using Serilog;
@@ -52,7 +57,6 @@ Log.Logger = new LoggerConfiguration()
 builder.Host.UseSerilog();
 #endregion
 
-Log.Logger.Error("bu bir hata mesajıdır");
 var configuration = builder.Configuration;
 
 #region SERVICES
@@ -60,7 +64,7 @@ var configuration = builder.Configuration;
 // Redis Cache Yapılandırması
 builder.Services.AddStackExchangeRedisCache(options =>
 {
-    options.Configuration = "localhost:6379,connectTimeout=10000,syncTimeout=10000,abortConnect=false";
+    options.Configuration = "localhost:6379,connectTimeout=3000,syncTimeout=200,responseTimeout=200,abortConnect=false";
     options.InstanceName = "FilmKirala_";
 });
 
@@ -158,6 +162,10 @@ builder.Services.AddSwaggerGen(options =>
 
 // MiniProfiler — Raporlama sorgularını profillemek için
 builder.Services.AddMemoryCache();
+builder.Services.AddOutputCache(options =>
+{
+    options.AddBasePolicy(policy => policy.Expire(TimeSpan.FromSeconds(30)));
+});
 builder.Services.AddMiniProfiler(options =>
 {
     options.RouteBasePath = "/profiler";
@@ -165,10 +173,46 @@ builder.Services.AddMiniProfiler(options =>
 
 builder.Services.AddScoped<IReportService, ReportService>();
 builder.Services.AddHostedService<ReportBackgroundWorker>();        //worker bundan alt alta daha eklersem worker sayısı da artar ab
+builder.Services.AddHostedService<RentalExpirationBackgroundWorker>();
+
+builder.Services.AddHealthChecks()
+    .AddCheck<DatabaseHealthCheck>("sqlserver");
+
+builder.Services.AddRateLimiter(options =>
+{
+    options.AddFixedWindowLimiter("auth", config =>
+    {
+        config.PermitLimit = 20;
+        config.Window = TimeSpan.FromMinutes(1);
+        config.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
+        config.QueueLimit = 0;
+    });
+
+    options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(context =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 5000,
+                Window = TimeSpan.FromMinutes(1)
+            }));
+
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+});
 
 #endregion
 
 var app = builder.Build();
+
+// Warm up EF Core model at startup so the first user request is never slow.
+// Only touches Movies — avoids competing with background workers that also hit Rentals on startup.
+_ = Task.Run(async () =>
+{
+    await Task.Delay(2000); // let background workers settle first
+    using var scope = app.Services.CreateScope();
+    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    await db.Movies.AsNoTracking().AnyAsync();
+});
 
 #region PIPELINE
 app.UseSerilogRequestLogging();
@@ -182,8 +226,11 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 app.UseHttpsRedirection();
+app.UseOutputCache();
+app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
+app.MapHealthChecks("/health");
 #endregion
 await app.RunAsync();

@@ -27,7 +27,7 @@ namespace FilmKirala.Domain.Entity
                 throw new ArgumentException("Kiralanacak film eksi olamaz");
             }
 
-            if (string.IsNullOrWhiteSpace(title) || title.Length >= 300)
+            if (string.IsNullOrWhiteSpace(title) || title.Length > 300)
             {
                 throw new ArgumentException("Filmin adı boş olamaz ve 300 karakterden az olmalı");
             }

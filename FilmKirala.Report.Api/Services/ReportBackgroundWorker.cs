@@ -26,20 +26,33 @@ public class ReportBackgroundWorker : BackgroundService
     {
         _logger.LogInformation(">>> [REPORT-WORKER] Started | Polling: {Interval}s | MaxConcurrency: 3", _pollInterval.Seconds);
 
+        // Delay startup polling so the app and DB settle before heavy report queries begin.
+        await Task.Delay(TimeSpan.FromSeconds(15), stoppingToken);
+
         while (!stoppingToken.IsCancellationRequested)
         {
+            bool semaphoreAcquired = false;
             try
             {
                 _logger.LogDebug("[HEARTBEAT] {Time} - Looking for pending work... (Active Slots: {Slots}/3)",
                     DateTime.Now.ToString("HH:mm:ss"), 3 - _semaphore.CurrentCount);
 
-                // We are waiting for a slot before starting processing
                 await _semaphore.WaitAsync(stoppingToken);
+                semaphoreAcquired = true;
 
                 await ProcessNextPendingJobAsync(stoppingToken);
             }
+            catch (OperationCanceledException)
+            {
+                break;
+            }
             catch (Exception ex)
             {
+                // If ProcessNextPendingJobAsync threw before spawning Task.Run,
+                // the semaphore was never released inside it — release it here.
+                if (semaphoreAcquired)
+                    _semaphore.Release();
+
                 _logger.LogCritical(ex, "[FATAL ERROR] The main loop of the BackgroundWorker has crashed.!");
             }
 
@@ -52,7 +65,7 @@ public class ReportBackgroundWorker : BackgroundService
         using var scope = _scopeFactory.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
-        // deadlock prevention location
+        // DB error here propagates to ExecuteAsync's catch, which releases the semaphore.
         var pendingJob = await db.ReportJobs
             .AsNoTracking()
             .Where(j => j.Status == ReportJobStatus.Pending)
@@ -62,7 +75,7 @@ public class ReportBackgroundWorker : BackgroundService
         if (pendingJob == null)
         {
             // If there is no work, we return the slot we reserved.
-            _semaphore.Release(); 
+            _semaphore.Release();
             return;
         }
 

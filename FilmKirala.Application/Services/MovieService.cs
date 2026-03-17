@@ -1,4 +1,5 @@
-﻿using AutoMapper;
+﻿using System.Linq.Expressions;
+using AutoMapper;
 using FilmKirala.Application.DTOs;
 using FilmKirala.Application.Interfaces;
 using FilmKirala.Application.Interfaces.Services;
@@ -12,31 +13,47 @@ namespace FilmKirala.Application.Services
     {
         private readonly IUnitOfWork _unitOfWork;
         private readonly IMapper _mapper;
+        private readonly ICacheService _cacheService;
 
-        public MovieService(IUnitOfWork unitOfWork, IMapper mapper)
+        public MovieService(IUnitOfWork unitOfWork, IMapper mapper, ICacheService cacheService)
         {
             _unitOfWork = unitOfWork;
             _mapper = mapper;
+            _cacheService = cacheService;
         }
 
-        public async Task<IEnumerable<MovieListDto>> GetAllMoviesAsync(string? search = null, string? genre = null, int page = 1, int pageSize = 20)
+        public async Task<PagedResult<MovieListDto>> GetAllMoviesAsync(string? search = null, string? genre = null, int page = 1, int pageSize = 20)
         {
             var searchTerm = search?.Trim();
 
-            var movies = await _unitOfWork.Movies.GetPagedAsync(
-                page,
-                pageSize,
-                predicate: m => (string.IsNullOrEmpty(searchTerm) || m.Title.StartsWith(searchTerm)) &&
-                                (string.IsNullOrEmpty(genre) || m.Genre == genre)
-            );
-            return _mapper.Map<IEnumerable<MovieListDto>>(movies);
+            Expression<Func<Movie, bool>> predicate = m =>
+                (string.IsNullOrEmpty(searchTerm) || m.Title.Contains(searchTerm)) &&
+                (string.IsNullOrEmpty(genre) || m.Genre == genre);
+
+            var movies = await _unitOfWork.Movies.GetPagedAsync(page, pageSize, predicate: predicate);
+            var totalCount = await _unitOfWork.Movies.CountAsync(predicate);
+
+            return new PagedResult<MovieListDto>
+            {
+                Items = _mapper.Map<IEnumerable<MovieListDto>>(movies),
+                TotalCount = totalCount,
+                Page = page,
+                PageSize = pageSize
+            };
         }
 
         public async Task<MovieDetailDto?> GetMovieByIdAsync(int id)
         {
-            var movie = await _unitOfWork.Movies.GetMovieWithDetailsAsync(id);
-            if (movie == null) throw new KeyNotFoundException($"Film not founded (ID: {id})");
-            return _mapper.Map<MovieDetailDto>(movie);
+            return await _cacheService.GetOrSetAsync(
+                key: $"movie_{id}",
+                factory: async () =>
+                {
+                    var movie = await _unitOfWork.Movies.GetMovieWithDetailsAsync(id);
+                    if (movie == null) throw new KeyNotFoundException($"Film not found (ID: {id})");
+                    return _mapper.Map<MovieDetailDto>(movie);
+                },
+                expiration: TimeSpan.FromMinutes(30)
+            );
         }
 
         public async Task CreateMovieAsync(CreateMovieDto createMovieDto)
@@ -56,10 +73,12 @@ namespace FilmKirala.Application.Services
         public async Task AddRentalPricingAsync(int movieId, DurationType durationType, int price)
         {
             var movie = await _unitOfWork.Movies.GetByIdAsync(movieId);
-            if (movie == null) throw new KeyNotFoundException("Not founded");
+            if (movie == null) throw new KeyNotFoundException($"Movie not found (ID: {movieId})");
 
             movie.AddRentalPricing(durationType, 1, price);
             await _unitOfWork.CompleteAsync();
+
+            _ = _cacheService.RemoveAsync($"movie_{movieId}");
         }
     }
 }

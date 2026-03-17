@@ -59,7 +59,7 @@ public class AuthService(IUnitOfWork unitOfWork, IConfiguration configuration, I
     public async Task<AuthResponseDto> GetCurrentUserAsync(int userId)
     {
         var user = await unitOfWork.Users.GetByIdAsync(userId);
-        if (user == null) throw new KeyNotFoundException("User not founded");
+        if (user == null) throw new KeyNotFoundException("User not found.");
 
         return new AuthResponseDto(
             user.Id,
@@ -75,7 +75,7 @@ public class AuthService(IUnitOfWork unitOfWork, IConfiguration configuration, I
     public async Task UpdateUserBalanceAsync(string email, int newBalance)
     {
         var user = await unitOfWork.Users.GetByEmailAsync(email);
-        if (user == null) throw new KeyNotFoundException($"User not founded{email}");
+        if (user == null) throw new KeyNotFoundException($"User not found: {email}");
 
         user.UpdateBalance(newBalance);
         await unitOfWork.CompleteAsync();
@@ -89,7 +89,7 @@ public class AuthService(IUnitOfWork unitOfWork, IConfiguration configuration, I
             throw new ArgumentException("The amount to be loaded must be greater than 0.");
 
         var user = await unitOfWork.Users.GetByIdAsync(userId)
-                   ?? throw new KeyNotFoundException("User not founded");
+                   ?? throw new KeyNotFoundException("User not found.");
 
         user.AddBalance(amount);
         await unitOfWork.CompleteAsync();

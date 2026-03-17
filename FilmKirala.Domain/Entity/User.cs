@@ -19,6 +19,7 @@ namespace FilmKirala.Domain.Entity
 
         public void AddRefreshToken(string token, DateTime expiryTime)
         {
+            _refreshTokens.RemoveAll(t => !t.IsActive);
             _refreshTokens.Add(new UserRefreshToken(token, expiryTime, Id));
         }
 

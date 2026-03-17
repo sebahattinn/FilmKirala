@@ -56,8 +56,9 @@ namespace FilmKirala.Report.Api.Services
                 using (var scope = _scopeFactory.CreateScope())
                 {
                     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-                    using var conn = new Microsoft.Data.SqlClient.SqlConnection(_configuration.GetConnectionString("DefaultConnection"));
-                    if (conn.State == ConnectionState.Closed) await conn.OpenAsync();
+                    // Single connection: EF Core's underlying connection is reused by Dapper.
+                    await db.Database.OpenConnectionAsync();
+                    var conn = db.Database.GetDbConnection();
 
                     Dictionary<int, int> rentalDict;
                     using (MiniProfiler.Current?.Step("DB: Pulling by Grouping Rental Numbers"))
@@ -201,8 +202,7 @@ namespace FilmKirala.Report.Api.Services
         }
         public async Task<object> GetMovieSummaryAsync(int lastId, int pageSize)
         {
-            using var scope = _scopeFactory.CreateScope();
-            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            // Single connection: no extra EF Core scope needed since only Dapper queries run here.
             using var conn = new Microsoft.Data.SqlClient.SqlConnection(_configuration.GetConnectionString("DefaultConnection"));
             if (conn.State == ConnectionState.Closed) await conn.OpenAsync();
 
@@ -247,13 +247,20 @@ namespace FilmKirala.Report.Api.Services
             if (lastId.HasValue) query = query.Where(m => m.Id > lastId.Value);
             if (pageSize.HasValue) query = query.Take(pageSize.Value);
 
-            return query.Select(m => new
-            {
-                FilmId = m.Id,
-                FilmAdi = m.Title,
-                Tur = m.Genre,
-                KiralamaSayisi = _context.Rentals.Count(r => r.MovieId == m.Id)
-            });
+            // LEFT JOIN with GROUP BY — single SQL query, no correlated subquery per row.
+            return query
+                .GroupJoin(
+                    _context.Rentals.AsNoTracking(),
+                    m => m.Id,
+                    r => r.MovieId,
+                    (m, rentals) => new { m, RentalCount = rentals.Count() })
+                .Select(x => (object)new
+                {
+                    FilmId = x.m.Id,
+                    FilmAdi = x.m.Title,
+                    Tur = x.m.Genre,
+                    KiralamaSayisi = x.RentalCount
+                });
         }
     }
 }

@@ -26,7 +26,7 @@ namespace FilmKirala.Domain.Entity
         public void RentalsCreate(DateTime startRentalDate, DateTime endRentalDate, int totalPrice, bool status, User user, Movie movie, RentalPricing rentalPricing, int quantity = 1)
         {
             if (totalPrice <= 0)
-                throw new InvalidOperationException("Bedavaya film olmaz ab");
+                throw new InvalidOperationException("Total price must be greater than zero.");
 
             if (quantity <= 0)
                 throw new ArgumentException("Miktar 0'dan büyük olmalıdır.");

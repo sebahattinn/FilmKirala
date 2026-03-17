@@ -2,6 +2,7 @@
 using FilmKirala.Application.Interfaces.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.RateLimiting;
 using System.Security.Claims;
 
 namespace FilmKirala.Api.Controllers
@@ -13,7 +14,8 @@ namespace FilmKirala.Api.Controllers
         private readonly IAuthService _authService;
         public AuthController(IAuthService authService) => _authService = authService;
 
-        [HttpPost("register")]   
+        [EnableRateLimiting("auth")]
+        [HttpPost("register")]
         public async Task<IActionResult> Register([FromBody] RegisterRequestDto request)
         {
             var result = await _authService.RegisterAsync(request);
@@ -21,10 +23,12 @@ namespace FilmKirala.Api.Controllers
             return CreatedAtAction(nameof(Login), new { email = request.Email }, result);
         }
 
+        [EnableRateLimiting("auth")]
         [HttpPost("login")]
         public async Task<IActionResult> Login([FromBody] LoginRequestDto request)
             => Ok(await _authService.LoginAsync(request));
 
+        [EnableRateLimiting("auth")]
         [HttpPost("refresh-token")]
         public async Task<IActionResult> RefreshToken([FromBody] RefreshTokenRequestDto request)
             => Ok(await _authService.RefreshTokenAsync(request));

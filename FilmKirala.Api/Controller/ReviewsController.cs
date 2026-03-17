@@ -21,10 +21,9 @@ namespace FilmKirala.Api.Controllers
         [HttpPost]
         public async Task<IActionResult> CreateReview([FromBody] CreateReviewDto request)
         {
-            var userIdString = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            if (string.IsNullOrEmpty(userIdString)) return Unauthorized();
-
-            int userId = int.Parse(userIdString);
+            var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out var userId))
+                return Unauthorized();
 
             await _reviewService.AddReviewAsync(request, userId);
             return Ok(new { message = "Your review has been submitted successfully." });
@@ -38,6 +37,13 @@ namespace FilmKirala.Api.Controllers
                 return Unauthorized();
 
             var reviews = await _reviewService.GetMyReviewsAsync(userId);
+            return Ok(reviews);
+        }
+
+        [HttpGet("by-rating")]
+        public async Task<IActionResult> GetReviewsByRating([FromQuery] int rating = 3, [FromQuery] int? movieId = null)
+        {
+            var reviews = await _reviewService.GetReviewsByRatingAsync(rating, movieId);
             return Ok(reviews);
         }
     }
