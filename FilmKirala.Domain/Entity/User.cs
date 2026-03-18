@@ -33,10 +33,10 @@ namespace FilmKirala.Domain.Entity
             WalletBalance -= amount;
         }
 
-        public void UpdateBalance(decimal newBalance)
+        public void UpdateBalance(int newBalance)
         {
             if (newBalance < 0) throw new ArgumentException("Bakiye 0'dan küçük olamaz!");
-            WalletBalance = (int)newBalance;
+            WalletBalance = newBalance;
         }
 
         public void AddBalance(int amount)

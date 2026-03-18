@@ -124,6 +124,9 @@ namespace FilmKirala.Infrastructure.Services
             // Remove from both levels so stale data never survives in L1 after invalidation
             memoryCache.Remove(key);
 
+            // Clean up the per-key lock so the dictionary doesn't grow forever
+            _keyLocks.TryRemove(key, out _);
+
             try
             {
                 await distributedCache.RemoveAsync(key);

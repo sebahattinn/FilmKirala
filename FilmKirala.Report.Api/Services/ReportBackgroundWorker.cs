@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using FilmKirala.Domain.Enums;
 using FilmKirala.Infrastructure.Persistence;
 using FilmKirala.Report.Api.Interfaces;
@@ -10,11 +11,12 @@ namespace FilmKirala.Report.Api.Services;
 
 public class ReportBackgroundWorker : BackgroundService
 {
-    private readonly IServiceScopeFactory _scopeFactory;                   // Buradaki kuyruk db tablosundaki pending olan job'lar
-    private readonly ILogger<ReportBackgroundWorker> _logger;             // Arka planda sürekli polling yapıyo bu sayfa ab.
-    private readonly TimeSpan _pollInterval = TimeSpan.FromSeconds(5);   // Worker Her 5 saniyede job var mı diye check ediyor 
-    private readonly SemaphoreSlim _semaphore = new SemaphoreSlim(4);  // maks 4 rapor aynı anda işlenebilir. Fazla gelirse kuyrukta bekler
-    private int _processedCount = 0;                                     // Toplam işlenen rapor sayacı
+    private readonly IServiceScopeFactory _scopeFactory;                   // The pending jobs in the queue database table here
+    private readonly ILogger<ReportBackgroundWorker> _logger;             // This page is constantly polling in the background, bro.
+    private readonly TimeSpan _pollInterval = TimeSpan.FromSeconds(5);   // The worker checks every 5 seconds to see if there is a job available 
+    private readonly SemaphoreSlim _semaphore = new SemaphoreSlim(4);  // A maximum of 4 reports can be processed at the same time. If there are more, they will be placed in a queue.
+    private int _processedCount = 0;                                     //  Total number of processed reports
+    private readonly ConcurrentDictionary<Guid, Task> _activeJobs = new(); // Tracks running jobs for graceful shutdown
 
     public ReportBackgroundWorker(IServiceScopeFactory scopeFactory, ILogger<ReportBackgroundWorker> logger)
     {
@@ -24,23 +26,43 @@ public class ReportBackgroundWorker : BackgroundService
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        _logger.LogInformation(">>> [REPORT-WORKER] Started | Polling: {Interval}s | MaxConcurrency: 3", _pollInterval.Seconds);
+        _logger.LogInformation(">>> [REPORT-WORKER] Started | Polling: {Interval}s | MaxConcurrency: {Max}",
+            _pollInterval.Seconds, _semaphore.CurrentCount);
 
         // Delay startup polling so the app and DB settle before heavy report queries begin.
         await Task.Delay(TimeSpan.FromSeconds(15), stoppingToken);
 
         while (!stoppingToken.IsCancellationRequested)
         {
-            bool semaphoreAcquired = false;
             try
             {
-                _logger.LogDebug("[HEARTBEAT] {Time} - Looking for pending work... (Active Slots: {Slots}/3)",
-                    DateTime.Now.ToString("HH:mm:ss"), 3 - _semaphore.CurrentCount);
+                var availableSlots = _semaphore.CurrentCount;
 
-                await _semaphore.WaitAsync(stoppingToken);
-                semaphoreAcquired = true;
+                _logger.LogDebug("[HEARTBEAT] {Time} - Available slots: {Slots}/{Max}",
+                    DateTime.UtcNow.ToString("HH:mm:ss"), availableSlots, _semaphore.CurrentCount + (4 - _semaphore.CurrentCount));
 
-                await ProcessNextPendingJobAsync(stoppingToken);
+                if (availableSlots == 0)
+                {
+                    // All slots busy — short wait then re-check instead of full poll interval
+                    await Task.Delay(TimeSpan.FromSeconds(1), stoppingToken);
+                    continue;
+                }
+
+                var pendingJobs = await FetchPendingJobsAsync(availableSlots, stoppingToken);
+
+                if (pendingJobs.Count == 0)
+                {
+                    // No work — wait the full poll interval before hitting the DB again
+                    await Task.Delay(_pollInterval, stoppingToken);
+                    continue;
+                }
+
+                // Dispatch all fetched jobs in parallel — one Task.Run per job
+                foreach (var (jobId, isCsv) in pendingJobs)
+                {
+                    await _semaphore.WaitAsync(stoppingToken);
+                    DispatchJob(jobId, isCsv, stoppingToken);
+                }
             }
             catch (OperationCanceledException)
             {
@@ -48,76 +70,80 @@ public class ReportBackgroundWorker : BackgroundService
             }
             catch (Exception ex)
             {
-                // If ProcessNextPendingJobAsync threw before spawning Task.Run,
-                // the semaphore was never released inside it — release it here.
-                if (semaphoreAcquired)
-                    _semaphore.Release();
-
-                _logger.LogCritical(ex, "[FATAL ERROR] The main loop of the BackgroundWorker has crashed.!");
+                _logger.LogCritical(ex, "[FATAL ERROR] The main loop of the BackgroundWorker has crashed!");
+                await Task.Delay(TimeSpan.FromSeconds(5), stoppingToken);
             }
-
-            await Task.Delay(_pollInterval, stoppingToken);
         }
     }
 
-    private async Task ProcessNextPendingJobAsync(CancellationToken stoppingToken)
+    public override async Task StopAsync(CancellationToken cancellationToken)
+    {
+        await base.StopAsync(cancellationToken); // signals stoppingToken, waits for ExecuteAsync to exit
+
+        var running = _activeJobs.Values.ToArray();
+        if (running.Length > 0)
+        {
+            _logger.LogInformation("[SHUTDOWN] Waiting for {Count} active job(s) to finish...", running.Length);
+            await Task.WhenAll(running);
+            _logger.LogInformation("[SHUTDOWN] All active jobs completed.");
+        }
+    }
+
+    /// <summary>
+    /// Fetches up to <paramref name="limit"/> pending jobs and marks them as Processing atomically.
+    /// </summary>
+    private async Task<List<(string JobId, bool IsCsv)>> FetchPendingJobsAsync(int limit, CancellationToken stoppingToken)
     {
         using var scope = _scopeFactory.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
-        // DB error here propagates to ExecuteAsync's catch, which releases the semaphore.
-        var pendingJob = await db.ReportJobs
-            .AsNoTracking()
+        var pendingJobs = await db.ReportJobs
             .Where(j => j.Status == ReportJobStatus.Pending)
             .OrderBy(j => j.CreatedAt)
-            .FirstOrDefaultAsync(stoppingToken);
+            .Take(limit)
+            .ToListAsync(stoppingToken);
 
-        if (pendingJob == null)
+        if (pendingJobs.Count == 0)
+            return [];
+
+        foreach (var job in pendingJobs)
+            job.MarkAsProcessing();
+
+        await db.SaveChangesAsync(stoppingToken);
+
+        _logger.LogWarning("[DISPATCH] Picked up {Count} pending job(s): [{Ids}]",
+            pendingJobs.Count, string.Join(", ", pendingJobs.Select(j => j.JobId)));
+
+        return pendingJobs.Select(j => (j.JobId, j.IsCsv)).ToList();
+    }
+
+    /// <summary>
+    /// Fires a report job on the thread pool. Semaphore must be acquired before calling.
+    /// </summary>
+    private void DispatchJob(string jobId, bool isCsv, CancellationToken stoppingToken)
+    {
+        var trackingId = Guid.NewGuid();
+
+        var job = Task.Run(async () =>
         {
-            // If there is no work, we return the slot we reserved.
-            _semaphore.Release();
-            return;
-        }
-
-        _logger.LogWarning("[NEW JOB]  Pending report caught! JobId: {JobId}", pendingJob.JobId);
-
-        // I am initiating tracking through a new scope to update the status to “Processing.”
-        using (var updateScope = _scopeFactory.CreateScope())
-        {
-            var updateDb = updateScope.ServiceProvider.GetRequiredService<AppDbContext>();
-            var jobToUpdate = await updateDb.ReportJobs.FirstOrDefaultAsync(x => x.Id == pendingJob.Id, stoppingToken);
-            if (jobToUpdate != null)
-            {
-                jobToUpdate.MarkAsProcessing();
-                await updateDb.SaveChangesAsync(stoppingToken);
-            }
-        }
-
-        var jobId = pendingJob.JobId;
-        var isCsv = pendingJob.IsCsv;
-
-        // I am starting the background task.
-        _ = Task.Run(async () =>
-        {
-            _logger.LogInformation("[START]  Processing: {JobId} (Thread: {ThreadId})", jobId, Environment.CurrentManagedThreadId);
-            var startTime = DateTime.Now;
+            _logger.LogInformation("[START] Processing: {JobId} (Thread: {ThreadId})", jobId, Environment.CurrentManagedThreadId);
+            var startTime = DateTime.UtcNow;
 
             try
             {
                 using var jobScope = _scopeFactory.CreateScope();
                 var reportService = jobScope.ServiceProvider.GetRequiredService<IReportService>();
 
-                // The service call that does the heavy lifting
                 await reportService.CreateLargeReportInBackgroundAsync(jobId, isCsv);
 
-                var duration = DateTime.Now - startTime;
+                var duration = DateTime.UtcNow - startTime;
                 Interlocked.Increment(ref _processedCount);
-                _logger.LogInformation("[SUCCESS]  Completed: {JobId} | Süre: {Sec}sn | Toplam: {Count}",
+                _logger.LogInformation("[SUCCESS] Completed: {JobId} | Duration: {Sec}s | Total: {Count}",
                     jobId, Math.Round(duration.TotalSeconds, 2), _processedCount);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "[ERROR]  Boombed: {JobId} | Mesaj: {Msg}", jobId, ex.Message);
+                _logger.LogError(ex, "[ERROR] Failed: {JobId} | Message: {Msg}", jobId, ex.Message);
 
                 try
                 {
@@ -128,19 +154,21 @@ public class ReportBackgroundWorker : BackgroundService
                     {
                         failedJob.MarkAsFailed();
                         await failDb.SaveChangesAsync();
-                        _logger.LogInformation("[DB UPDATE]  {JobId} The status has been updated to ‘Failed’.", jobId);
                     }
                 }
                 catch (Exception dbEx)
                 {
-                    _logger.LogError(dbEx, "[CRITICAL] The database update failed.! JobId: {JobId}", jobId);
+                    _logger.LogError(dbEx, "[CRITICAL] DB update failed for JobId: {JobId}", jobId);
                 }
             }
             finally
             {
-                _semaphore.Release(); 
-                _logger.LogDebug("[RELEASE]  The slot is empty. Remaining active jobs: {Count}/3", 3 - _semaphore.CurrentCount);
+                _semaphore.Release();
+                _activeJobs.TryRemove(trackingId, out _);
+                _logger.LogDebug("[RELEASE] Slot freed. Active jobs: {Active}/4", 4 - _semaphore.CurrentCount);
             }
         }, stoppingToken);
+
+        _activeJobs.TryAdd(trackingId, job);
     }
 }

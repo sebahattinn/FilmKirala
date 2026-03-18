@@ -204,14 +204,23 @@ builder.Services.AddRateLimiter(options =>
 
 var app = builder.Build();
 
-// Warm up EF Core model at startup so the first user request is never slow.
-// Only touches Movies — avoids competing with background workers that also hit Rentals on startup.
+// Warm up the database connection pool and SQL Server query plans at startup
+// so the first real user request is never slow.
 _ = Task.Run(async () =>
 {
     await Task.Delay(2000); // let background workers settle first
-    using var scope = app.Services.CreateScope();
-    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-    await db.Movies.AsNoTracking().AnyAsync();
+    try
+    {
+        using var scope = app.Services.CreateScope();
+        var movieService = scope.ServiceProvider.GetRequiredService<IMovieService>();
+        // Execute the full GetMovieWithDetailsAsync query (QueryMultiple) so SQL Server
+        // compiles and caches all three query plans before any user hits the endpoint.
+        await movieService.GetMovieByIdAsync(1);
+    }
+    catch
+    {
+        // Warmup failure is non-fatal — app continues normally.
+    }
 });
 
 #region PIPELINE

@@ -48,9 +48,9 @@ namespace FilmKirala.Application.Services
                 key: $"movie_{id}",
                 factory: async () =>
                 {
-                    var movie = await _unitOfWork.Movies.GetMovieWithDetailsAsync(id);
-                    if (movie == null) throw new KeyNotFoundException($"Film not found (ID: {id})");
-                    return _mapper.Map<MovieDetailDto>(movie);
+                    var dto = await _unitOfWork.Movies.GetMovieWithDetailsAsync(id);
+                    if (dto == null) throw new KeyNotFoundException($"Film not found (ID: {id})");
+                    return dto;
                 },
                 expiration: TimeSpan.FromMinutes(30)
             );

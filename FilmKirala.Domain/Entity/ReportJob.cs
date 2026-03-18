@@ -19,7 +19,7 @@ namespace FilmKirala.Domain.Entity
                 JobId = jobId,
                 IsCsv = isCsv,
                 Status = ReportJobStatus.Pending,
-                CreatedAt = DateTime.Now
+                CreatedAt = DateTime.UtcNow
             };
 
         public void MarkAsProcessing() => Status = ReportJobStatus.Processing;

@@ -29,7 +29,7 @@ public class AuthService(IUnitOfWork unitOfWork, IConfiguration configuration, I
             0,
             Roles.User 
         );
-
+        
         var refreshToken = GenerateRefreshToken();
         user.AddRefreshToken(refreshToken, DateTime.UtcNow.AddDays(7));
 
@@ -39,7 +39,6 @@ public class AuthService(IUnitOfWork unitOfWork, IConfiguration configuration, I
         return new AuthResponseDto(user.Id, user.Username, user.Email, CreateToken(user),
             refreshToken, user.Roles.ToString(), user.WalletBalance);
     }
-
     public async Task<AuthResponseDto> LoginAsync(LoginRequestDto request)
     {
         var user = await unitOfWork.Users.GetByEmailAsync(request.Email);
@@ -71,7 +70,6 @@ public class AuthService(IUnitOfWork unitOfWork, IConfiguration configuration, I
             user.WalletBalance
         );
     }
-
     public async Task UpdateUserBalanceAsync(string email, int newBalance)
     {
         var user = await unitOfWork.Users.GetByEmailAsync(email);
@@ -80,7 +78,7 @@ public class AuthService(IUnitOfWork unitOfWork, IConfiguration configuration, I
         user.UpdateBalance(newBalance);
         await unitOfWork.CompleteAsync();
 
-        _ = cacheService.RemoveAsync($"user_profile_{user.Id}");
+        await cacheService.RemoveAsync($"user_profile_{user.Id}");
     }
 
     public async Task<TopUpResponseDto> TopUpBalanceAsync(int userId, int amount)
@@ -94,7 +92,7 @@ public class AuthService(IUnitOfWork unitOfWork, IConfiguration configuration, I
         user.AddBalance(amount);
         await unitOfWork.CompleteAsync();
 
-        _ = cacheService.RemoveAsync($"user_profile_{userId}");
+        await cacheService.RemoveAsync($"user_profile_{userId}");
 
         return new TopUpResponseDto(user.WalletBalance, $"{amount} Added to your TL balance.");
     }
@@ -124,7 +122,6 @@ public class AuthService(IUnitOfWork unitOfWork, IConfiguration configuration, I
         return new AuthResponseDto(user.Id, user.Username, user.Email, newToken,
             newRefreshToken, user.Roles.ToString(), user.WalletBalance);
     }
-
     private string CreateToken(User user)
     {
         var claims = new List<Claim>

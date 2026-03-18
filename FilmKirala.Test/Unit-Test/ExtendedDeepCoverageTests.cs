@@ -30,7 +30,7 @@ namespace FilmKirala.Test.UnitTests
             var cacheMock = new Mock<ICacheService>();
             var movieService = new MovieService(uowMock.Object, null!, cacheMock.Object);
 
-            uowMock.Setup(x => x.Movies.GetMovieWithDetailsAsync(It.IsAny<int>())).ReturnsAsync((Movie)null!);
+            uowMock.Setup(x => x.Movies.GetMovieWithDetailsAsync(It.IsAny<int>())).ReturnsAsync((MovieDetailDto)null!);
 
             await Assert.ThrowsAsync<KeyNotFoundException>(() => movieService.GetMovieByIdAsync(999));
 

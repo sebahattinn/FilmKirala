@@ -37,8 +37,7 @@ namespace FilmKirala.Api.Controllers
         [HttpPost("update-balance")]
         public async Task<IActionResult> AdminUpdateBalance([FromBody] UpdateBalanceDto request)
         {
-            //  decimal olan request.NewBalance'ı int'e cast ettim
-            await _authService.UpdateUserBalanceAsync(request.Email, (int)request.NewBalance);
+            await _authService.UpdateUserBalanceAsync(request.Email, request.NewBalance);
 
             return Ok(new { Message = "User balance updated successfully." });
         }

@@ -5,15 +5,15 @@
    
         Task<string> QueueReportAsync(bool isCsv);
 
-        // BackgroundWorker tarafından çağrılır: asıl Excel/CSV üretim işi
+        //  Called by the BackgroundWorker: the main Excel/CSV generation task
         Task CreateLargeReportInBackgroundAsync(string jobId, bool isCsv);
 
-        // Controller: rapor dosyasını döner (sadece Status=Completed ise)
+        // Controller: Returns the report file (only if Status=Completed)
         Task<(bool IsReady, byte[]? FileBytes, string? FileName)> GetReportFileAsync(string jobId);
 
-        Task<string> GetJobStatusAsync(string jobId);
+        Task<string> GetJobStatusAsync(string jobId); 
 
-        // Anlık özet ve export
+        // Real-time summary and export
         Task<object> GetMovieSummaryAsync(int lastId, int pageSize);
         Task<MemoryStream> ExportMoviesAsync(int? lastId = null, int? pageSize = null, bool isCsv = false);
     }
