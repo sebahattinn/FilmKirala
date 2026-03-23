@@ -6,6 +6,7 @@ using FilmKirala.Report.Api.Interfaces;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using MiniExcelLibs;
 using StackExchange.Profiling;
 using System.Collections.Concurrent;
@@ -21,12 +22,14 @@ namespace FilmKirala.Report.Api.Services
         private readonly IServiceScopeFactory _scopeFactory;
         private readonly string _exportPath;
         private readonly MSConfig _configuration;
+        private readonly ILogger<ReportService> _logger;
 
-        public ReportService(AppDbContext context, IServiceScopeFactory scopeFactory, MSConfig configuration)
+        public ReportService(AppDbContext context, IServiceScopeFactory scopeFactory, MSConfig configuration, ILogger<ReportService> logger)
         {
             _context = context;
             _scopeFactory = scopeFactory;
             _configuration = configuration;
+            _logger = logger;
             var parentDir = Directory.GetParent(Directory.GetCurrentDirectory())?.FullName ?? Directory.GetCurrentDirectory();
             _exportPath = Path.Combine(parentDir, "FilmKiralaExports");
         }
@@ -55,24 +58,26 @@ namespace FilmKirala.Report.Api.Services
                 using (var scope = _scopeFactory.CreateScope())
                 {
                     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-                    // Single connection: EF Core's underlying connection is reused by Dapper.
+
+                    _logger.LogInformation("[REPORT] {JobId} → DB bağlantısı açılıyor...", jobId);
                     await db.Database.OpenConnectionAsync();
                     var conn = db.Database.GetDbConnection();
+                    _logger.LogInformation("[REPORT] {JobId} → Bağlantı açıldı. Kiralama istatistikleri yükleniyor...", jobId);
 
-                    Dictionary<int, int> rentalDict;
-                    using (MiniProfiler.Current?.Step("DB: Pulling by Grouping Rental Numbers"))
-                    {
-                        var rentals = await SqlMapper.QueryAsync<(int MovieId, int Count)>(conn,
-                            "SELECT MovieId, COUNT(*) as Count FROM Rentals WITH (NOLOCK) GROUP BY MovieId",
-                            commandTimeout: 300);
-                        rentalDict = rentals.ToDictionary(x => x.MovieId, x => x.Count);
-                    }
+                    var rentals = await SqlMapper.QueryAsync<(int MovieId, int Count)>(conn,
+                        "SELECT MovieId, COUNT(*) as Count FROM Rentals WITH (NOLOCK) GROUP BY MovieId",
+                        commandTimeout: 600);
+                    var rentalDict = rentals.ToDictionary(x => x.MovieId, x => x.Count);
+                    _logger.LogInformation("[REPORT] {JobId} → Kiralama istatistikleri yüklendi ({Count} film). Film sayısı alınıyor...", jobId, rentalDict.Count);
 
                     int batchSize = 40000;
                     int lastId = 0;
                     int processedCount = 0;
                     bool isFirstBatch = true;
-                    int totalMovies = await conn.ExecuteScalarAsync<int>("SELECT COUNT(*) FROM Movies WITH (NOLOCK)", commandTimeout: 120);
+                    int totalMovies = await conn.ExecuteScalarAsync<int>(
+                        "SELECT SUM(p.rows) FROM sys.partitions p INNER JOIN sys.tables t ON p.object_id = t.object_id WHERE t.name = 'Movies' AND p.index_id IN (0,1)",
+                        commandTimeout: 10);
+                    _logger.LogInformation("[REPORT] {JobId} → Toplam film: {Total}. Batch işleme başlıyor...", jobId, totalMovies);
                     // XLSX: collect all rows in memory, write once at the end (InsertAsync overwrites rather than appends for XLSX)
                     var xlsxAllRows = isCsv ? null : new List<object>();
 
@@ -108,9 +113,8 @@ namespace FilmKirala.Report.Api.Services
 
                             var threadList = string.Join(",", activeThreads.Keys.OrderBy(x => x));
                             double progress = (double)(processedCount + movies.Count) / totalMovies * 100;
-                            Console.ForegroundColor = ConsoleColor.Cyan;
-                            Console.Write($"\r[BATCH] %{progress:F1} | Workers: [{threadList}] | Job: {jobId}");
-                            Console.ResetColor();
+                            _logger.LogInformation("[BATCH] %{Progress:F1} | Workers: [{Threads}] | Job: {JobId}",
+                                progress, threadList, jobId);
                         }
 
                         if (isCsv)
@@ -140,10 +144,12 @@ namespace FilmKirala.Report.Api.Services
                     // XLSX: write all accumulated rows in one shot
                     if (!isCsv && xlsxAllRows!.Count > 0)
                     {
+                        _logger.LogInformation("[REPORT] {JobId} → XLSX diske yazılıyor ({Count} satır)...", jobId, xlsxAllRows.Count);
                         using (MiniProfiler.Current?.Step("IO: Writing XLSX to Disk with MiniExcel"))
                         {
                             await MiniExcel.SaveAsAsync(fullPath, xlsxAllRows, excelType: ExcelType.XLSX);
                         }
+                        _logger.LogInformation("[REPORT] {JobId} → XLSX yazımı tamamlandı.", jobId);
                     }
 
                     using (MiniProfiler.Current?.Step("DB:  Job Status is Being Updated"))
@@ -175,7 +181,7 @@ namespace FilmKirala.Report.Api.Services
                 }
 
                 sw.Stop();
-                Console.WriteLine($"\n Report Complete! JobId: {jobId} | Süre: {sw.Elapsed.TotalSeconds:F1} sn.\n");
+                _logger.LogInformation("[REPORT-DONE] JobId: {JobId} | Süre: {Duration:F1}s", jobId, sw.Elapsed.TotalSeconds);
             }
         }
         

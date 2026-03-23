@@ -36,12 +36,45 @@ namespace FilmKirala.Api.Controllers
             return Ok(result);
         }
 
+        /// <summary>
+        /// Yeni bir film oluşturur. (Sadece Admin erişebilir)
+        /// </summary>
+        /// <remarks>
+        /// Film oluşturulurken isteğe bağlı olarak kiralama seçenekleri (pricings) de eklenebilir.
+        ///
+        /// **DurationType değerleri:**
+        /// | Değer | Anlam      |
+        /// |-------|------------|
+        /// | 1     | Saatlik    |
+        /// | 2     | Günlük     |
+        /// | 3     | Haftalık   |
+        /// | 4     | Aylık      |
+        /// | 5     | Yıllık     |
+        ///
+        /// **Örnek istek:**
+        /// ```json
+        /// {
+        ///   "title": "Inception",
+        ///   "description": "Rüya içinde rüya filmi",
+        ///   "genre": "Bilim Kurgu",
+        ///   "stock": 10,
+        ///   "pricings": [
+        ///     { "durationType": 2, "durationValue": 1, "price": 20 },
+        ///     { "durationType": 3, "durationValue": 1, "price": 50 }
+        ///   ]
+        /// }
+        /// ```
+        /// </remarks>
+        /// <response code="201">Film başarıyla oluşturuldu.</response>
+        /// <response code="400">Validasyon hatası.</response>
+        /// <response code="401">Giriş yapılmamış.</response>
+        /// <response code="403">Admin yetkisi yok.</response>
         [Authorize(Roles = "Admin")]
         [HttpPost]
         public async Task<IActionResult> CreateMovie([FromBody] CreateMovieDto request)
         {
             await _movieService.CreateMovieAsync(request);
-            return CreatedAtAction(nameof(GetById), new { }, new { message = "Movie created successfully." });
+            return StatusCode(StatusCodes.Status201Created, new { message = "Movie created successfully." });
         }
     }
 }

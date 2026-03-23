@@ -22,6 +22,7 @@ namespace FilmKirala.Domain.Entity
                 CreatedAt = DateTime.UtcNow
             };
 
+        public void MarkAsPending() => Status = ReportJobStatus.Pending;
         public void MarkAsProcessing() => Status = ReportJobStatus.Processing;
 
         public void MarkAsCompleted(string filePath)

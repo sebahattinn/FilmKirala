@@ -6,13 +6,21 @@ using System.Threading.Tasks;
 
 namespace FilmKirala.Domain.Enums
 {
+    /// <summary>
+    /// Kiralama süresinin birimi. POST /api/Movies ve POST /api/Rentals body'sinde
+    /// <c>durationType</c> alanına bu değerlerden biri gönderilmelidir.
+    /// </summary>
     public enum DurationType
     {
-        Saatlik=1,
-        Günlük=2,
-        Haftalık=3,
-        Aylık= 4,
-        Yıllık=5
-
+        /// <summary>Saatlik kiralama (değer: 1)</summary>
+        Saatlik = 1,
+        /// <summary>Günlük kiralama (değer: 2)</summary>
+        Günlük = 2,
+        /// <summary>Haftalık kiralama (değer: 3)</summary>
+        Haftalık = 3,
+        /// <summary>Aylık kiralama (değer: 4)</summary>
+        Aylık = 4,
+        /// <summary>Yıllık kiralama (değer: 5)</summary>
+        Yıllık = 5
     }
 }

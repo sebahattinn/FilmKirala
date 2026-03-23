@@ -3,6 +3,21 @@ using FilmKirala.Application.DTOs;
 
 namespace FilmKirala.Application.Validators
 {
+    public class CreatePricingDtoValidator : AbstractValidator<CreatePricingDto>
+    {
+        public CreatePricingDtoValidator()
+        {
+            RuleFor(x => x.DurationValue)
+                .GreaterThan(0).WithMessage("Süre değeri 0'dan büyük olmalıdır.");
+
+            RuleFor(x => x.Price)
+                .GreaterThan(0).WithMessage("Fiyat 0'dan büyük olmalıdır.");
+
+            RuleFor(x => x.DurationType)
+                .IsInEnum().WithMessage("Geçersiz süre tipi.");
+        }
+    }
+
     public class PricingDtoValidator : AbstractValidator<PricingDto>
     {
         public PricingDtoValidator()
@@ -17,6 +32,7 @@ namespace FilmKirala.Application.Validators
                 .IsInEnum().WithMessage("Geçersiz süre tipi.");
         }
     }
+
     public class CreateMovieDtoValidator : AbstractValidator<CreateMovieDto>
     {
         public CreateMovieDtoValidator()
@@ -35,7 +51,7 @@ namespace FilmKirala.Application.Validators
             RuleFor(x => x.Stock)
                 .GreaterThanOrEqualTo(0).WithMessage("Stok adedi eksi olamaz.");
 
-            RuleForEach(x => x.Pricings).SetValidator(new PricingDtoValidator());
+            RuleForEach(x => x.Pricings).SetValidator(new CreatePricingDtoValidator());
         }
     }
     public class UpdateMovieDtoValidator : AbstractValidator<UpdateMovieDto>

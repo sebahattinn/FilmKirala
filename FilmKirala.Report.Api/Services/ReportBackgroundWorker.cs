@@ -14,7 +14,7 @@ public class ReportBackgroundWorker : BackgroundService
     private readonly IServiceScopeFactory _scopeFactory;                   // The pending jobs in the queue database table here
     private readonly ILogger<ReportBackgroundWorker> _logger;             // This page is constantly polling in the background, bro.
     private readonly TimeSpan _pollInterval = TimeSpan.FromSeconds(5);   // The worker checks every 5 seconds to see if there is a job available 
-    private readonly SemaphoreSlim _semaphore = new SemaphoreSlim(4);  // A maximum of 4 reports can be processed at the same time. If there are more, they will be placed in a queue.
+    private readonly SemaphoreSlim _semaphore = new SemaphoreSlim(3);  // Aynı anda 1 rapor — XLSX 1M satır için yüzlerce MB RAM + ağır DB sorgusu, concurrent çalışınca SQL Server'ı boğuyor.
     private int _processedCount = 0;                                     //  Total number of processed reports
     private readonly ConcurrentDictionary<Guid, Task> _activeJobs = new(); // Tracks running jobs for graceful shutdown
 
@@ -29,8 +29,9 @@ public class ReportBackgroundWorker : BackgroundService
         _logger.LogInformation(">>> [REPORT-WORKER] Started | Polling: {Interval}s | MaxConcurrency: {Max}",
             _pollInterval.Seconds, _semaphore.CurrentCount);
 
-        // Delay startup polling so the app and DB settle before heavy report queries begin.
-        await Task.Delay(TimeSpan.FromSeconds(15), stoppingToken);
+        
+        await RecoverStuckJobsAsync(stoppingToken);
+        await Task.Delay(TimeSpan.FromSeconds(3), stoppingToken);
 
         while (!stoppingToken.IsCancellationRequested)
         {
@@ -87,6 +88,25 @@ public class ReportBackgroundWorker : BackgroundService
             await Task.WhenAll(running);
             _logger.LogInformation("[SHUTDOWN] All active jobs completed.");
         }
+    }
+
+    private async Task RecoverStuckJobsAsync(CancellationToken stoppingToken)
+    {
+        using var scope = _scopeFactory.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+        var stuckJobs = await db.ReportJobs
+            .Where(j => j.Status == ReportJobStatus.Processing)
+            .ToListAsync(stoppingToken);
+
+        if (stuckJobs.Count == 0) return;
+
+        foreach (var job in stuckJobs)
+            job.MarkAsPending();
+
+        await db.SaveChangesAsync(stoppingToken);
+        _logger.LogWarning("[RECOVERY] {Count} stuck job(s) reset to Pending: [{Ids}]",
+            stuckJobs.Count, string.Join(", ", stuckJobs.Select(j => j.JobId)));
     }
 
     private async Task<List<(string JobId, bool IsCsv)>> FetchPendingJobsAsync(int limit, CancellationToken stoppingToken)

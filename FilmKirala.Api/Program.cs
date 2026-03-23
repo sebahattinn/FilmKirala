@@ -80,7 +80,8 @@ builder.Services.AddControllers(options =>
 
 // Veritabanı Bağlantısı
 builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseSqlServer(configuration.GetConnectionString("DefaultConnection")));
+    options.UseSqlServer(configuration.GetConnectionString("DefaultConnection"), sqlOptions =>
+        sqlOptions.EnableRetryOnFailure(maxRetryCount: 3, maxRetryDelay: TimeSpan.FromSeconds(5), errorNumbersToAdd: null)));
 
 // Repository ve UnitOfWork Kayıtları
 builder.Services.AddScoped(typeof(IGenericRepository<>), typeof(GenericRepository<>));
@@ -140,6 +141,14 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
 {
     options.SwaggerDoc("v1", new OpenApiInfo { Title = "FilmKirala API", Version = "v1" });
+
+    // XML doc yorumlarını Swagger'a dahil et (controller + DTO açıklamaları)
+    var apiXml    = Path.Combine(AppContext.BaseDirectory, "FilmKirala.Api.xml");
+    var appXml    = Path.Combine(AppContext.BaseDirectory, "FilmKirala.Application.xml");
+    var domainXml = Path.Combine(AppContext.BaseDirectory, "FilmKirala.Domain.xml");
+    if (File.Exists(apiXml))    options.IncludeXmlComments(apiXml);
+    if (File.Exists(appXml))    options.IncludeXmlComments(appXml);
+    if (File.Exists(domainXml)) options.IncludeXmlComments(domainXml);
     options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
         Name = "Authorization",
@@ -226,6 +235,20 @@ _ = Task.Run(async () =>
 #region PIPELINE
 app.UseSerilogRequestLogging();
 app.UseMiddleware<GlobalExceptionMiddleware>();
+
+// 401 / 403 yanıtlarına açıklayıcı JSON mesajı ekle
+app.UseStatusCodePages(async ctx =>
+{
+    var response = ctx.HttpContext.Response;
+    response.ContentType = "application/json";
+    var body = response.StatusCode switch
+    {
+        401 => new { statusCode = 401, message = "Giriş yapmanız gerekmektedir." },
+        403 => new { statusCode = 403, message = "Admin yetkisi gereklidir, bu işlemi yapamazsınız." },
+        _   => new { statusCode = response.StatusCode, message = "Bir hata oluştu." }
+    };
+    await response.WriteAsJsonAsync(body);
+});
 
 app.UseMiniProfiler();
 
