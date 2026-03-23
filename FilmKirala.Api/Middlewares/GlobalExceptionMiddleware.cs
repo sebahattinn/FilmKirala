@@ -21,7 +21,7 @@ namespace FilmKirala.Api.Middlewares
             catch (Exception ex)
             {
                 // Central Logging is here
-                Log.Error(ex, "Bir hata oluştu: {Message}", ex.Message);
+                Log.Error(ex, "An error occurred: {Message}", ex.Message);
 
                 var statusCode = ex switch
                 {

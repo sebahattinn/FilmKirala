@@ -19,7 +19,7 @@ namespace FilmKirala.Api.Filters
              
                 context.Result = new BadRequestObjectResult(new
                 {
-                    Message = "Validasyon hatası: Gönderdiğiniz veriler beklenen formatta değil.",
+                    Message = "Validation Error: The data you submitted is not in the expected format.",
                     Errors = errors
                 });
             }

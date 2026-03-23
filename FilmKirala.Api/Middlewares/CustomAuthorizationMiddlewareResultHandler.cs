@@ -3,10 +3,7 @@ using Microsoft.AspNetCore.Authorization.Policy;
 
 namespace FilmKirala.Api.Middlewares
 {
-    /// <summary>
-    /// Yetersiz yetki (403) ve kimlik doğrulama eksikliği (401) durumlarında
-    /// açıklayıcı JSON mesajı döndürür.
-    /// </summary>
+  
     public class CustomAuthorizationMiddlewareResultHandler : IAuthorizationMiddlewareResultHandler
     {
         public async Task HandleAsync(
@@ -15,7 +12,7 @@ namespace FilmKirala.Api.Middlewares
             AuthorizationPolicy policy,
             PolicyAuthorizationResult authorizeResult)
         {
-            // Kimlik doğrulandı ama yetki yetersiz (örn: Admin rolü yok) → 403
+            
             if (authorizeResult.Forbidden)
             {
                 context.Response.StatusCode = StatusCodes.Status403Forbidden;
@@ -23,12 +20,11 @@ namespace FilmKirala.Api.Middlewares
                 await context.Response.WriteAsJsonAsync(new
                 {
                     statusCode = 403,
-                    message = "Bu işlem için Admin yetkisi gereklidir. Hesabınızın bu kaynağa erişim izni bulunmamaktadır."
+                    message = "Administrator privileges are required for this operation. Your account does not have permission to access this resource."
                 });
                 return;
             }
 
-            // Token gönderilmemiş veya geçersiz → 401
             if (authorizeResult.Challenged)
             {
                 context.Response.StatusCode = StatusCodes.Status401Unauthorized;
@@ -36,7 +32,7 @@ namespace FilmKirala.Api.Middlewares
                 await context.Response.WriteAsJsonAsync(new
                 {
                     statusCode = 401,
-                    message = "Bu işlem için giriş yapmanız gerekmektedir. Lütfen geçerli bir Bearer token gönderin."
+                    message = "You must be logged in to perform this action. Please send a valid Bearer token."
                 });
                 return;
             }
