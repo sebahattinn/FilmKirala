@@ -72,11 +72,9 @@ namespace FilmKirala.Application.Services
 
         public async Task CheckExpiredRentalsAsync(int? userId = null)
         {
-            var query = userId.HasValue
-                ? await unitOfWork.Rentals.FindAsync(r => r.UserId == userId.Value && r.Status && r.EndRentalDate <= DateTime.UtcNow)
-                : await unitOfWork.Rentals.FindAsync(r => r.Status && r.EndRentalDate <= DateTime.UtcNow);
-
-            var expired = query.ToList();
+            var expired = userId.HasValue
+                ? (await unitOfWork.Rentals.FindAsync(r => r.UserId == userId.Value && r.Status && r.EndRentalDate <= DateTime.UtcNow)).ToList()
+                : (await unitOfWork.Rentals.FindAsync(r => r.Status && r.EndRentalDate <= DateTime.UtcNow)).ToList();
 
             if (expired.Any())
             {
@@ -86,9 +84,11 @@ namespace FilmKirala.Application.Services
                 foreach (var rental in expired)
                 {
                     rental.ExpireRental();
+                    unitOfWork.Rentals.Update(rental);
                     if (movies.TryGetValue(rental.MovieId, out var movie))
                     {
                         movie.IncreaseStock(rental.Quantity);
+                        unitOfWork.Movies.Update(movie);
                     }
                 }
                 await unitOfWork.CompleteAsync();

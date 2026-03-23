@@ -21,7 +21,7 @@ public class ReportBackgroundWorker : BackgroundService
     public ReportBackgroundWorker(IServiceScopeFactory scopeFactory, ILogger<ReportBackgroundWorker> logger)
     {
         _scopeFactory = scopeFactory;
-        _logger = logger;
+        _logger = logger;   
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -89,9 +89,6 @@ public class ReportBackgroundWorker : BackgroundService
         }
     }
 
-    /// <summary>
-    /// Fetches up to <paramref name="limit"/> pending jobs and marks them as Processing atomically.
-    /// </summary>
     private async Task<List<(string JobId, bool IsCsv)>> FetchPendingJobsAsync(int limit, CancellationToken stoppingToken)
     {
         using var scope = _scopeFactory.CreateScope();
@@ -117,9 +114,6 @@ public class ReportBackgroundWorker : BackgroundService
         return pendingJobs.Select(j => (j.JobId, j.IsCsv)).ToList();
     }
 
-    /// <summary>
-    /// Fires a report job on the thread pool. Semaphore must be acquired before calling.
-    /// </summary>
     private void DispatchJob(string jobId, bool isCsv, CancellationToken stoppingToken)
     {
         var trackingId = Guid.NewGuid();

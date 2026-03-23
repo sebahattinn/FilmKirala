@@ -11,7 +11,6 @@ using StackExchange.Profiling;
 using System.Collections.Concurrent;
 using System.Data;
 using System.Diagnostics;
-using System.Text.Json;
 using MSConfig = Microsoft.Extensions.Configuration.IConfiguration;
 
 namespace FilmKirala.Report.Api.Services
@@ -73,7 +72,7 @@ namespace FilmKirala.Report.Api.Services
                     int lastId = 0;
                     int processedCount = 0;
                     bool isFirstBatch = true;
-                    int totalMovies = await conn.ExecuteScalarAsync<int>("SELECT COUNT(*) FROM Movies WITH (NOLOCK)");
+                    int totalMovies = await conn.ExecuteScalarAsync<int>("SELECT COUNT(*) FROM Movies WITH (NOLOCK)", commandTimeout: 120);
                     // XLSX: collect all rows in memory, write once at the end (InsertAsync overwrites rather than appends for XLSX)
                     var xlsxAllRows = isCsv ? null : new List<object>();
 
@@ -94,7 +93,7 @@ namespace FilmKirala.Report.Api.Services
                         using (MiniProfiler.Current?.Step("PLINQ: Mapping process"))
                         {
                             var activeThreads = new ConcurrentDictionary<int, byte>();
-                            currentBatchRows = movies.AsParallel()                       //PQLİNQ starter
+                            currentBatchRows = movies.AsParallel()                       //PLİNQ starter
                                 .WithDegreeOfParallelism(Environment.ProcessorCount)
                                 .Select(m => {
                                     activeThreads.TryAdd(Thread.CurrentThread.ManagedThreadId, 0);
@@ -229,11 +228,10 @@ namespace FilmKirala.Report.Api.Services
             if (!movies.Any()) return new { Count = 0, Data = new List<object>() };
 
             var movieIds = movies.Select(m => (int)m.Id).ToList();
-            string jsonIds = JsonSerializer.Serialize(movieIds);
 
             var rentalCounts = await SqlMapper.QueryAsync<(int MovieId, int Count)>(conn,
-                @"SELECT r.MovieId, COUNT(*) as Count FROM Rentals r WHERE r.MovieId IN (SELECT value FROM OPENJSON(@jsonIds) WITH (value int '$')) GROUP BY r.MovieId",
-                new { jsonIds });
+                "SELECT MovieId, COUNT(*) as Count FROM Rentals WHERE MovieId IN @movieIds GROUP BY MovieId",
+                new { movieIds });
 
             var rentalDict = rentalCounts.ToDictionary(x => x.MovieId, x => x.Count);
 
