@@ -5,9 +5,9 @@ using MassTransit;
 using Microsoft.Extensions.Logging;
 
 namespace FilmKirala.Notification.Api.Consumers
-{                                                                   // event-driven architecture
-    public class FilmRentedConsumer : IConsumer<FilmRentedEvent>     //MassTransit Consumerı
-    {                                                        //Film kiralandığında gelen event’i yakalar ve NotificationLogs tablosuna kayıt atar.
+{                                                                  
+    public class FilmRentedConsumer : IConsumer<FilmRentedEvent>     
+    {                                                       
         private readonly NotificationAppDbContext _dbContext;
         private readonly ILogger<FilmRentedConsumer> _logger;
 

@@ -11,7 +11,6 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
 
 namespace FilmKirala.Application.Services;
-
 public class AuthService(IUnitOfWork unitOfWork, IConfiguration configuration, ICacheService cacheService) : IAuthService
 {
     public async Task<AuthResponseDto> RegisterAsync(RegisterRequestDto request)

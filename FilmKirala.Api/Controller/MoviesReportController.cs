@@ -34,7 +34,7 @@ namespace FilmKirala.Api.Controllers
             }
 
             if (fileBytes == null || fileBytes.Length == 0)
-                return NotFound(new { message = "Rapor dosyasý fiziksel olarak bulunamadý." });
+                return NotFound(new { message = "Rapor dosyasý as a physical not founded." });
 
             string contentType = fileName!.EndsWith(".csv") ? "text/csv" : "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
             return File(fileBytes, contentType, fileName);

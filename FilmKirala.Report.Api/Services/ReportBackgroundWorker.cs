@@ -14,9 +14,10 @@ public class ReportBackgroundWorker : BackgroundService
     private readonly IServiceScopeFactory _scopeFactory;                   // The pending jobs in the queue database table here
     private readonly ILogger<ReportBackgroundWorker> _logger;             // This page is constantly polling in the background, bro.
     private readonly TimeSpan _pollInterval = TimeSpan.FromSeconds(5);   // The worker checks every 5 seconds to see if there is a job available 
-    private readonly SemaphoreSlim _semaphore = new SemaphoreSlim(3);  // Aynı anda 1 rapor — XLSX 1M satır için yüzlerce MB RAM + ağır DB sorgusu, concurrent çalışınca SQL Server'ı boğuyor.
+    private readonly SemaphoreSlim _semaphore = new SemaphoreSlim(5);  // Aynı anda 1 rapor — XLSX 1M satır için yüzlerce MB RAM + ağır DB sorgusu, concurrent çalışınca SQL Server'ı boğuyor.
     private int _processedCount = 0;                                     //  Total number of processed reports
     private readonly ConcurrentDictionary<Guid, Task> _activeJobs = new(); // Tracks running jobs for graceful shutdown
+    
 
     public ReportBackgroundWorker(IServiceScopeFactory scopeFactory, ILogger<ReportBackgroundWorker> logger)
     {
