@@ -90,7 +90,6 @@ public class ReportBackgroundWorker : BackgroundService
             _logger.LogInformation("[SHUTDOWN] All active jobs completed.");
         }
     }
-
     private async Task RecoverStuckJobsAsync(CancellationToken stoppingToken)
     {
         using var scope = _scopeFactory.CreateScope();

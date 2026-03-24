@@ -29,6 +29,7 @@ namespace FilmKirala.Notification.Api.Consumers
                     message: context.Message.Message,
                     type: "FilmRental"
                 );
+                _logger.LogInformation("Rented procces is working great ");
 
                 notificationLog.MarkAsSent();
 

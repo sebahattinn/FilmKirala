@@ -142,7 +142,7 @@ builder.Services.AddSwaggerGen(options =>
 {
     options.SwaggerDoc("v1", new OpenApiInfo { Title = "FilmKirala API", Version = "v1" });
 
-    // XML doc yorumlarını Swagger'a dahil et (controller + DTO açıklamaları)
+    // XML doc yorumlarını Swagger'a dahil ediyoruz (controller + DTO açıklamaları)
     var apiXml    = Path.Combine(AppContext.BaseDirectory, "FilmKirala.Api.xml");
     var appXml    = Path.Combine(AppContext.BaseDirectory, "FilmKirala.Application.xml");
     var domainXml = Path.Combine(AppContext.BaseDirectory, "FilmKirala.Domain.xml");
@@ -181,7 +181,8 @@ builder.Services.AddMiniProfiler(options =>
 }).AddEntityFramework();
 
 builder.Services.AddScoped<IReportService, ReportService>();
-builder.Services.AddHostedService<ReportBackgroundWorker>();        //worker bundan alt alta daha eklersem worker sayısı da artar ab
+//worker bundan alt alta daha eklersem worker sayısı da artar ab
+builder.Services.AddHostedService<ReportBackgroundWorker>();       
 builder.Services.AddHostedService<RentalExpirationBackgroundWorker>();
 
 builder.Services.AddHealthChecks()
@@ -213,22 +214,19 @@ builder.Services.AddRateLimiter(options =>
 
 var app = builder.Build();
 
-// Warm up the database connection pool and SQL Server query plans at startup
-// so the first real user request is never slow.
 _ = Task.Run(async () =>
 {
-    await Task.Delay(2000); // let background workers settle first
+    await Task.Delay(2000); 
     try
     {
         using var scope = app.Services.CreateScope();
         var movieService = scope.ServiceProvider.GetRequiredService<IMovieService>();
-        // Execute the full GetMovieWithDetailsAsync query (QueryMultiple) so SQL Server
-        // compiles and caches all three query plans before any user hits the endpoint.
+      
         await movieService.GetMovieByIdAsync(1);
     }
     catch
     {
-        // Warmup failure is non-fatal — app continues normally.
+        
     }
 });
 
@@ -236,7 +234,7 @@ _ = Task.Run(async () =>
 app.UseSerilogRequestLogging();
 app.UseMiddleware<GlobalExceptionMiddleware>();
 
-// 401 / 403 yanıtlarına açıklayıcı JSON mesajı ekle
+// 401 / 403 Response messaging JSON add Message
 app.UseStatusCodePages(async ctx =>
 {
     var response = ctx.HttpContext.Response;

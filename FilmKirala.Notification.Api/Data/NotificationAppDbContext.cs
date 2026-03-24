@@ -7,7 +7,6 @@ namespace FilmKirala.Notification.Api.Data
     {
         public NotificationAppDbContext(DbContextOptions<NotificationAppDbContext> options) : base(options) { }
 
-      
         public DbSet<NotificationLog> NotificationLogs => Set<NotificationLog>();
     }
 }
