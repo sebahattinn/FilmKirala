@@ -40,7 +40,7 @@ namespace FilmKirala.Test.UnitTests
                 Description = "Nolan'ın başyapıtı",
                 Genre = "Sci-Fi",
                 Stock = 10,
-                Pricings = new List<PricingDto>()
+             //   Pricings = new List<PricingDto>()
             };
 
            
