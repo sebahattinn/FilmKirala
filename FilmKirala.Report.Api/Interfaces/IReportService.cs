@@ -5,9 +5,6 @@
    
         Task<string> QueueReportAsync(bool isCsv);
 
-        //  Called by the BackgroundWorker: the main Excel/CSV generation task
-        Task CreateLargeReportInBackgroundAsync(string jobId, bool isCsv);
-
         // Controller: Returns the report file (only if Status=Completed)
         Task<(bool IsReady, byte[]? FileBytes, string? FileName)> GetReportFileAsync(string jobId);
 

@@ -9,9 +9,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using MiniExcelLibs;
 using StackExchange.Profiling;
-using System.Collections.Concurrent;
 using System.Data;
-using System.Diagnostics;
 using MSConfig = Microsoft.Extensions.Configuration.IConfiguration;
 
 namespace FilmKirala.Report.Api.Services
@@ -23,17 +21,16 @@ namespace FilmKirala.Report.Api.Services
         private readonly string _exportPath;
         private readonly MSConfig _configuration;
         private readonly ILogger<ReportService> _logger;
-
+        
         public ReportService(AppDbContext context, IServiceScopeFactory scopeFactory, MSConfig configuration, ILogger<ReportService> logger)
         {
             _context = context;
             _scopeFactory = scopeFactory;
             _configuration = configuration;
             _logger = logger;
-            var parentDir = Directory.GetParent(Directory.GetCurrentDirectory())?.FullName ?? Directory.GetCurrentDirectory();
+            var parentDir = Directory.GetParent(Directory.GetCurrentDirectory())?.FullName ?? Directory.GetCurrentDirectory();   //CSV writer. sorguyu csv'ye çıkaran 
             _exportPath = Path.Combine(parentDir, "FilmKiralaExports");
         }
-
         // Inserts a pending record into the database, returns the JobId 
         public async Task<string> QueueReportAsync(bool isCsv)
         {
@@ -43,148 +40,6 @@ namespace FilmKirala.Report.Api.Services
             await _context.SaveChangesAsync();
             return jobId;
         }
-
-        // Called by BackgroundWorker
-        public async Task CreateLargeReportInBackgroundAsync(string jobId, bool isCsv)
-        {
-            using (MiniProfiler.Current?.Step($"Background Report: {jobId}"))
-            {
-                Stopwatch sw = Stopwatch.StartNew();
-                if (!Directory.Exists(_exportPath)) Directory.CreateDirectory(_exportPath);
-                var fullPath = Path.Combine(_exportPath, $"Report_{jobId}.{(isCsv ? "csv" : "xlsx")}");
-
-                if (File.Exists(fullPath)) File.Delete(fullPath);
-
-                using (var scope = _scopeFactory.CreateScope())
-                {
-                    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-
-                    _logger.LogInformation("[REPORT] {JobId} → DB bağlantısı açılıyor...", jobId);
-                    await db.Database.OpenConnectionAsync();
-                    var conn = db.Database.GetDbConnection();
-                    _logger.LogInformation("[REPORT] {JobId} → Bağlantı açıldı. Kiralama istatistikleri yükleniyor...", jobId);
-
-                    var rentals = await SqlMapper.QueryAsync<(int MovieId, int Count)>(conn,
-                        "SELECT MovieId, COUNT(*) as Count FROM Rentals WITH (NOLOCK) GROUP BY MovieId",
-                        commandTimeout: 600);
-                    var rentalDict = rentals.ToDictionary(x => x.MovieId, x => x.Count);
-                    _logger.LogInformation("[REPORT] {JobId} → Kiralama istatistikleri yüklendi ({Count} film). Film sayısı alınıyor...", jobId, rentalDict.Count);
-
-                    int batchSize = 40000;
-                    int lastId = 0;
-                    int processedCount = 0;
-                    bool isFirstBatch = true;
-                    int totalMovies = await conn.ExecuteScalarAsync<int>(
-                        "SELECT SUM(p.rows) FROM sys.partitions p INNER JOIN sys.tables t ON p.object_id = t.object_id WHERE t.name = 'Movies' AND p.index_id IN (0,1)",
-                        commandTimeout: 10);
-                    _logger.LogInformation("[REPORT] {JobId} → Toplam film: {Total}. Batch işleme başlıyor...", jobId, totalMovies);
-                    // XLSX: collect all rows in memory, write once at the end (InsertAsync overwrites rather than appends for XLSX)
-                    var xlsxAllRows = isCsv ? null : new List<object>();
-
-                    while (true)
-                    {
-                        List<dynamic> movies;
-                        using (MiniProfiler.Current?.Step($"Batch pulling (LastId: {lastId})"))
-                        {
-                            movies = (await SqlMapper.QueryAsync(conn,
-                                "SELECT Id, Title, Genre FROM Movies WHERE Id > @lastId ORDER BY Id OFFSET 0 ROWS FETCH NEXT @batchSize ROWS ONLY",
-                                new { lastId, batchSize },
-                                commandTimeout: 120)).ToList();
-                        }
-
-                        if (!movies.Any()) break;
-
-                        List<object> currentBatchRows;
-                        using (MiniProfiler.Current?.Step("PLINQ: Mapping process"))
-                        {
-                            var activeThreads = new ConcurrentDictionary<int, byte>();
-                            currentBatchRows = movies.AsParallel()                       //PLİNQ starter
-                                .WithDegreeOfParallelism(Environment.ProcessorCount)
-                                .Select(m => {
-                                    activeThreads.TryAdd(Thread.CurrentThread.ManagedThreadId, 0);
-                                    return new
-                                    {
-                                        FilmId = (int)m.Id,
-                                        FilmAdi = (string)m.Title,
-                                        Tur = (string)m.Genre,
-                                        KiralamaSayisi = rentalDict.GetValueOrDefault((int)m.Id, 0)
-                                    };
-                                }).Cast<object>().ToList();
-
-                            var threadList = string.Join(",", activeThreads.Keys.OrderBy(x => x));
-                            double progress = (double)(processedCount + movies.Count) / totalMovies * 100;
-                            _logger.LogInformation("[BATCH] %{Progress:F1} | Workers: [{Threads}] | Job: {JobId}",
-                                progress, threadList, jobId);
-                        }
-
-                        if (isCsv)
-                        {
-                            using (MiniProfiler.Current?.Step("IO: Writing CSV batch to Disk"))
-                            {
-                                if (isFirstBatch)
-                                {
-                                    await MiniExcel.SaveAsAsync(fullPath, currentBatchRows, excelType: ExcelType.CSV);
-                                    isFirstBatch = false;
-                                }
-                                else
-                                {
-                                    await MiniExcel.InsertAsync(fullPath, currentBatchRows, sheetName: "Sheet1", excelType: ExcelType.CSV);
-                                }
-                            }
-                        }
-                        else
-                        {
-                            xlsxAllRows!.AddRange(currentBatchRows);
-                        }
-
-                        processedCount += movies.Count;
-                        lastId = (int)movies.Last().Id;
-                    }
-
-                    // XLSX: write all accumulated rows in one shot
-                    if (!isCsv && xlsxAllRows!.Count > 0)
-                    {
-                        _logger.LogInformation("[REPORT] {JobId} → XLSX diske yazılıyor ({Count} satır)...", jobId, xlsxAllRows.Count);
-                        using (MiniProfiler.Current?.Step("IO: Writing XLSX to Disk with MiniExcel"))
-                        {
-                            await MiniExcel.SaveAsAsync(fullPath, xlsxAllRows, excelType: ExcelType.XLSX);
-                        }
-                        _logger.LogInformation("[REPORT] {JobId} → XLSX yazımı tamamlandı.", jobId);
-                    }
-
-                    using (MiniProfiler.Current?.Step("DB:  Job Status is Being Updated"))
-                    {
-                        var reportJob = await db.ReportJobs.FirstOrDefaultAsync(j => j.JobId == jobId);
-                        if (reportJob != null)
-                        {
-                            reportJob.MarkAsCompleted(fullPath);
-                            await db.SaveChangesAsync();
-                        }
-                    }
-                  
-                    using (MiniProfiler.Current?.Step("DB: Notification Record is Being Created"))
-                    {
-                        // Constructor We only provide 4 basic parameters.
-                        var notification = new NotificationLog(
-                            userEmail: "admin@filmkirala.com",
-                            subject: "Rapor Ready",
-                            message: $"Rapor Ended. JobId: {jobId} | Süre: {sw.Elapsed.TotalSeconds:F1}s",
-                            type: isCsv ? "CSV" : "XLSX"
-                        );
-
-                        // Since the report is ready, we can mark the status as “Sent.”
-                        notification.MarkAsSent();
-
-                        db.NotificationLogs.Add(notification);
-                        await db.SaveChangesAsync();
-                    }
-                }
-
-                sw.Stop();
-                _logger.LogInformation("[REPORT-DONE] JobId: {JobId} | Süre: {Duration:F1}s", jobId, sw.Elapsed.TotalSeconds);
-            }
-        }
-        
         public async Task<(bool IsReady, byte[]? FileBytes, string? FileName)> GetReportFileAsync(string jobId)
         {
             var job = await _context.ReportJobs.FirstOrDefaultAsync(j => j.JobId == jobId);
@@ -260,7 +115,6 @@ namespace FilmKirala.Report.Api.Services
             stream.Seek(0, SeekOrigin.Begin);
             return stream;
         }
-
         private IQueryable<object> PrepareExportQuery(int? lastId, int? pageSize)
         {
             var query = _context.Movies.AsNoTracking().OrderBy(m => m.Id).AsQueryable();
@@ -275,7 +129,7 @@ namespace FilmKirala.Report.Api.Services
                     r => r.MovieId,
                     (m, rentals) => new { m, RentalCount = rentals.Count() })
                 .Select(x => (object)new
-                {
+                {    
                     FilmId = x.m.Id,
                     FilmAdi = x.m.Title,
                     Tur = x.m.Genre,

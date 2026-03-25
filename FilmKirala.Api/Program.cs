@@ -13,7 +13,7 @@ using FilmKirala.Infrastructure.Persistence;
 using FilmKirala.Infrastructure.Repositories;
 using FilmKirala.Infrastructure.Services;
 using FilmKirala.Report.Api.Interfaces;
-using FilmKirala.Report.Api.Services;
+using FilmKirala.Report.Api.Services; // ReportService — BackgroundWorker yeni microservise taşındı
 using FluentValidation;
 using FluentValidation.AspNetCore;
 using MassTransit;
@@ -181,8 +181,7 @@ builder.Services.AddMiniProfiler(options =>
 }).AddEntityFramework();
 
 builder.Services.AddScoped<IReportService, ReportService>();
-//worker bundan alt alta daha eklersem worker sayısı da artar ab
-builder.Services.AddHostedService<ReportBackgroundWorker>();       
+// ReportBackgroundWorker → FilmKirala.Report microservisine taşındı
 builder.Services.AddHostedService<RentalExpirationBackgroundWorker>();
 
 builder.Services.AddHealthChecks()
