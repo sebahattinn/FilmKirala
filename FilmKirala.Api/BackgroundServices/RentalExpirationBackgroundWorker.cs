@@ -13,7 +13,6 @@ public class RentalExpirationBackgroundWorker : BackgroundService
         _scopeFactory = scopeFactory;
         _logger = logger;
     }
-
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         _logger.LogInformation("[EXPIRATION-WORKER] Started | Interval: {Interval}min", _interval.TotalMinutes);
@@ -33,7 +32,6 @@ public class RentalExpirationBackgroundWorker : BackgroundService
             {
                 _logger.LogError(ex, "[EXPIRATION-WORKER] Error during expired rental check.");
             }
-
             await Task.Delay(_interval, stoppingToken);
         }
     }

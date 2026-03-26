@@ -1,5 +1,7 @@
 using FilmKirala.Report.Api.Interfaces;
+using MassTransit;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Options;
 
 namespace FilmKirala.Api.Controllers
 {
@@ -17,13 +19,11 @@ namespace FilmKirala.Api.Controllers
             var jobId = await _reportService.QueueReportAsync(isCsv);
             return Accepted(new { Status = "Queued", JobId = jobId, StatusUrl = $"/api/Reports/{jobId}/status" });
         }
-
-        [HttpGet("{jobId}/download")]
+        [HttpGet("{jobId}/download")] 
         public async Task<IActionResult> DownloadReport(string jobId)
         {
             var (isReady, fileBytes, fileName) = await _reportService.GetReportFileAsync(jobId);
 
-         
             if (!isReady)
             {
                 // First, check if such a record exists in the DB (check the service for status control)
@@ -51,6 +51,7 @@ namespace FilmKirala.Api.Controllers
                 "Failed"    => Ok(new { Status = "Failed",    Message = "Report generation failed." }),
                 "NotFound"  => NotFound(new { Message = "No report found for the given job ID." }),
                 _           => Ok(new { Status = status,      Message = "Report is being generated, please check back later." })
+            
             };
         }
 

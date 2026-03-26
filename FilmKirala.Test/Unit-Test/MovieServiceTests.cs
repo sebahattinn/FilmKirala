@@ -43,9 +43,7 @@ namespace FilmKirala.Test.UnitTests
              //   Pricings = new List<PricingDto>()
             };
 
-           
             await _movieService.CreateMovieAsync(dto);
-
          
             _movieRepoMock.Verify(x => x.AddAsync(It.IsAny<Movie>()), Times.Once);
 
