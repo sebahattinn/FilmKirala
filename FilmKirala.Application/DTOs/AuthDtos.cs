@@ -14,4 +14,5 @@
     public record RefreshTokenRequestDto(string AccessToken, string RefreshToken);
     public record TopUpRequestDto(int Amount);
     public record TopUpResponseDto(int NewBalance, string Message);
+    public record ChangePasswordRequestDto(string Email, string CurrentPassword, string NewPassword);
 }

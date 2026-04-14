@@ -16,5 +16,7 @@ namespace FilmKirala.Application.Interfaces.Services
         Task<TopUpResponseDto> TopUpBalanceAsync(int userId, int amount);
 
         Task<AuthResponseDto> GetCurrentUserAsync(int userId);
+
+        Task ChangePasswordAsync(ChangePasswordRequestDto request);
     }
 }

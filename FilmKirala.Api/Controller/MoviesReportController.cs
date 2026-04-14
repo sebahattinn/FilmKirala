@@ -24,13 +24,13 @@ namespace FilmKirala.Api.Controllers
         {
             var (isReady, fileBytes, fileName) = await _reportService.GetReportFileAsync(jobId);
 
-            if (!isReady)
+            if (!isReady) 
             {
                 // First, check if such a record exists in the DB (check the service for status control)
                 var status = await _reportService.GetJobStatusAsync(jobId);
                 if (status == "NotFound") return NotFound(new { message = "Böyle bir rapor talebi hiç oluþmamýþ." });
 
-                return Accepted(new { message = "Rapor henüz hazýrlanýyor, lütfen bekleyin.", status = status });
+                return Accepted(new { message = "Rapor henüz hazýrlanýyor, please hold on.", status = status });
             }
 
             if (fileBytes == null || fileBytes.Length == 0)

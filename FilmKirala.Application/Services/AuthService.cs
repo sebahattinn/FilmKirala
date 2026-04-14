@@ -7,6 +7,7 @@ using FilmKirala.Application.Interfaces;
 using FilmKirala.Application.Interfaces.Services;
 using FilmKirala.Domain.Entity;
 using FilmKirala.Domain.Enums;
+using FilmKirala.Domain.Exceptions;
 using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
 
@@ -40,11 +41,15 @@ public class AuthService(IUnitOfWork unitOfWork, IConfiguration configuration, I
     }
     public async Task<AuthResponseDto> LoginAsync(LoginRequestDto request)
     {
-        var user = await unitOfWork.Users.GetByEmailAsync(request.Email);
+        var user = await unitOfWork.Users.GetByEmailAsync(request.Email);       // find user with gmail and pull all data from Users table 
         if (user == null) throw new UnauthorizedAccessException("The email or password is incorrect.");
 
         if (!VerifyPasswordHash(request.Password, Convert.FromBase64String(user.PasswordHash), Convert.FromBase64String(user.PasswordSalt)))
             throw new UnauthorizedAccessException("The email or password is incorrect.");
+
+     //Because of this section—that is, because we've thrown an exception—a JWT cannot be generated, and this prevents the login from proceeding. 
+        if (user.IsLoginBlocked)
+            throw new PasswordChangeRequiredException(); 
 
         var refreshToken = GenerateRefreshToken();
         user.AddRefreshToken(refreshToken, DateTime.UtcNow.AddDays(7));
@@ -121,6 +126,22 @@ public class AuthService(IUnitOfWork unitOfWork, IConfiguration configuration, I
         return new AuthResponseDto(user.Id, user.Username, user.Email, newToken,
             newRefreshToken, user.Roles.ToString(), user.WalletBalance);
     }
+    public async Task ChangePasswordAsync(ChangePasswordRequestDto request)
+    {
+        var user = await unitOfWork.Users.GetByEmailAsync(request.Email)
+                   ?? throw new KeyNotFoundException("User not found.");
+
+        if (!VerifyPasswordHash(request.CurrentPassword, Convert.FromBase64String(user.PasswordHash), Convert.FromBase64String(user.PasswordSalt)))
+            throw new UnauthorizedAccessException("Current password is incorrect.");
+
+        CreatePasswordHash(request.NewPassword, out byte[] newHash, out byte[] newSalt);
+
+        user.ChangePassword(Convert.ToBase64String(newHash), Convert.ToBase64String(newSalt));
+
+        await unitOfWork.CompleteAsync();
+        await cacheService.RemoveAsync($"user_profile_{user.Id}");
+    }
+
     private string CreateToken(User user)
     {
         var claims = new List<Claim>

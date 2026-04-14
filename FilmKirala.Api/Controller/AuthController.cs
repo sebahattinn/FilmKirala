@@ -54,6 +54,14 @@ namespace FilmKirala.Api.Controllers
             return Ok(result);
         }
 
+        [EnableRateLimiting("auth")]
+        [HttpPost("change-password")]
+        public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordRequestDto request)
+        {
+            await _authService.ChangePasswordAsync(request);
+            return Ok(new { Message = "Password changed successfully." });
+        }
+
         [Authorize]
         [HttpGet("me")]
         public async Task<IActionResult> GetProfile()

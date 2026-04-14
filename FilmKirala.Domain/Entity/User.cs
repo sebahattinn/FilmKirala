@@ -12,8 +12,10 @@ namespace FilmKirala.Domain.Entity
         public int WalletBalance { get; private set; } = walletBalance;
         public DateTime CreatedAt { get; private set; } = DateTime.UtcNow;
         public Roles Roles { get; private set; } = roles;
+        public DateTime? PasswordChangedAt { get; private set; }
+        public bool IsLoginBlocked { get; private set; }
+        public DateTime? PasswordWarningSentAt { get; private set; }
 
-    
         private readonly List<UserRefreshToken> _refreshTokens = [];
         public IReadOnlyCollection<UserRefreshToken> RefreshTokens => _refreshTokens;
 
@@ -43,6 +45,25 @@ namespace FilmKirala.Domain.Entity
         {
             if (amount <= 0) throw new ArgumentException("Yüklenecek tutar 0'dan büyük olmalıdır.");
             WalletBalance += amount;
+        }
+
+        public void ChangePassword(string newPasswordHash, string newPasswordSalt)
+        {
+            PasswordHash = newPasswordHash;
+            PasswordSalt = newPasswordSalt;
+            PasswordChangedAt = DateTime.UtcNow;     // gerekli güncellemeler
+            IsLoginBlocked = false;
+            PasswordWarningSentAt = null;
+        }
+
+        public void BlockLogin()
+        {
+            IsLoginBlocked = true;
+        }
+
+        public void MarkWarningSent()
+        {
+            PasswordWarningSentAt = DateTime.UtcNow;
         }
     }
 }

@@ -52,7 +52,6 @@ namespace FilmKirala.Api.Controllers
                     : $"No {rating}-star reviews found.";
                 return NotFound(new { message });
             }
-
             return Ok(result);
         }
     }
